@@ -97,7 +97,12 @@ $^{2}$ \quad Affiliation 2; e-mail@e-mail.com}
 %\conference{} % An extended version of a conference paper
 
 % Abstract (Do not insert blank lines, i.e. \\) 
-\abstract{Radio-frequency(RF)tomographic imaging is a promising technique for in}
+\abstract{Radio-frequency(RF)tomographic imaging is a promising technique for inferring multi-dimensional physical space by processing RF signals traversed across a region of interest.
+The transform-based tensor model is more considered to be more appropriate than conventional model based on vector. The Alt-Min approach proposed by Deng. demonstrate significanct
+improvement in recovery error and convergence sppeed compared to prior tensor-based compressed sensing. However, the running time of Tubal-Alt-Min increases exponentially with the dimension of 
+tensors, thus not very practical for medium- or large-scale tensors. In this paper, we address this problem by exploiting massively parallel GPUs. We design, implement and optimize the 
+Alt-Min algorithm on a GPU and evaluate the performance in terms of running time, recovery error, and convergence speed. 
+%Experiment results show that the GPU algorithm is as accurate as the CPU counterpart with 63.69x speedup on average for all tensor sizes and up to 108.88x for large  tensors. We further encapsulate the GPU algorithm into an open-source library, called \textit{cuTensor}, and demonstrate its application in video data recovery. The cuTensor library can be easily applied on many other applications of tensor completion.}
 
 % Keywords
 \keyword{keyword 1; keyword 2; keyword 3 (list three to ten pertinent keywords specific to the article, yet reasonably common within the subject discipline.)}
@@ -139,18 +144,40 @@ The template details the sections that can be used in a manuscript. Note that th
 %The order of the section titles is: Introduction, Materials and Methods, Results, Discussion, Conclusions for these journals: aerospace,algorithms,antibodies,antioxidants,atmosphere,axioms,biomedicines,carbon,crystals,designs,diagnostics,environments,fermentation,fluids,forests,fractalfract,informatics,information,inventions,jfmk,jrfm,lubricants,neonatalscreening,neuroglia,particles,pharmaceutics,polymers,processes,technologies,viruses,vision
 
 \section{Introduction}
-The introduction should briefly place the study in a broad context and highlight why it is important. It should define the purpose of the work and its significance. The current state of the research field should be reviewed carefully and key publications cited. Please highlight controversial and diverging hypotheses when necessary. Finally, briefly mention the main aim of the work and highlight the principal conclusions. As far as possible, please keep the introduction comprehensible to scientists outside your particular field of research. Citing a journal paper \cite{ref-journal}. And now citing a book reference \cite{ref-book}. Please use the command \citep{ref-journal} for the following MDPI journals, which use author-date citation: Administrative Sciences, Arts, Econometrics, Economies, Genealogy, Humanities, IJFS, JRFM, Languages, Laws, Religions, Risks, Social Sciences.
+
  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Results}
+\section{Background overview}
 
-This section may be divided by subheadings. It should provide a concise and precise description of the experimental results, their interpretation as well as the experimental conclusions that can be drawn.
 \begin{quote}
-This section may be divided by subheadings. It should provide a concise and precise description of the experimental results, their interpretation as well as the experimental conclusions that can be drawn.
+    We first formulate the RF tomographic imaging task as a tensor sensing problem, then review the Alt-Min algorithm. 
 \end{quote}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Subsection}
+\subsection{Notations and Problem Formulation}
+We use lowercase boldface letter $\mathbf{x} \in \mathbb{R}^{N_1}$ to denote a vector, uppercase boldface letter $\mathbf{X} \in \mathbb{R}^{N_1 \times N_2}$ to denote a matrix, 
+and calligraphic letter $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ to denote a tensor. $[k]$ denotes the set $\{1,2,\dots, k\}$. Let $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ 
+denote a third-order tensor. $\mathcal{A}(:,j,k)$, $\mathcal{A}(i,:,k)$, $\mathcal{A}(i,j:)$ denote mode-1, mode-2, mode-3 tubes of $\mathcal{A}$, and $\mathcal{A}(:,:,k)$, $\mathcal{A}(:,j,:)$ $\mathcal{A}(i,:,:)$ 
+denote the frontal, lateral, and horizontal slices. The Frobenius norm of $\mathcal{A}$ is defined as $\|\mathcal{A}\|_F = \sqrt{\sum ^N_1_{i = 1} \sum ^N_2_{j = 1} \sum ^N_3_{k = 1} \mathcal{A}^2_{ijk}}$.
+The operator vec(.) transforms tensors and matrices into vectors. Let $\mathbf{X}^{T}$ and $\mathcal{A}^{\dagger}$ denote the transposes of a matrix and a tensor, respectively.
+\begin{defn}
+    Given an invertible discrete transform $\mathcal{L}:\mathbb{R}{1\times 1 \times N_3} \to \mathbb{R}{1\times 1\times N_3}$, the elementwise multiplication $\circ$, and $\mathbf{a}, \mathbf{b} \in \mathbb{R}{1\times 1\times N_3} , the tubal-scalar multiplication is defined as:
+    \begin{center}
+        \begin{equation}
+            \mathbf{a} \bullet \mathbf{b} = \mathcal{L}^{-1}(\mathcal{L}(\mathbf{a})\circ \mathcal{L}(\mathbf{b}))
+        \end{equation}
+    \end{center}
+\end{defn}
+
+\begin{defn}
+    The $\mathcal{L}$-product $\marhcal{A} = \mathcal{B} \bullet \mathcal{C}$ of $\mathcal{B} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{C} \in \mathbb{R}^{r\times \times N_2 \times N_3}$ is a tensor of size $N_1 \times N_2 \times N_3$, $\mathcal{A}(i,j,:) = \sum^r_{s=0}\mathcal{B}(i,s,:)\bullet \mathcal{C}(s,j,:)$, for $i \in \[N_1\]$ and $j \in \[N_2\]$.
+\end{defn}
+
+\begin{defn}
+    The transform domain singular value decomposition $\mathcal{L}$-SVD of $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ is given by $\mathcal{A} = \mathcal{U} \circ \mathcal{S} \circ \mathcal{V}^{\dagger}$, where $\mathcal{U}$ and $\mathcal{V}$ are $\mathcal{L}$-orthogonal tensors of size $N_1 \times N_1 \times N_3$ and $N_2 \times N_2 \times N_3$ respectively, and $\mathcal{S}$ is a diagonal tensor of size $N_1 \tiems N_2 \times N_3$. The entries of $\mathcal{S}$ are called the singular values of $\mathcal{A}$, and the number of non-zero ones is called the $\mathcal{L}$-rank of $\mathcal{A}$.
+\end{defn}
+
+Let $K$ be the 
 \unskip
 \subsubsection{Subsubsection}
 
