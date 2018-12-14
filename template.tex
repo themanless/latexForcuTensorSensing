@@ -8,6 +8,9 @@
 
 \usepackage{amsthm}
 \usepackage{amsmath}
+\usepackage{enumitem}
+\newlist{steps}{enumerate}{1}
+\setlist[steps, 1]{label = Step \arabic*).}
 \theoremstyle{plain}
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{lem}[thm]{Lemma}
@@ -196,9 +199,98 @@ Let $K$ be the number if nodes within the network, then the total number if two-
 \begin{equation}
     \mathbf{y}_m = P_t - P_{i_mj_m} - \bar{P}(d_{i_m}, 
 \end{equation}
-We stack the RF signal measurements $\mathbf{y}_m$ into a measurement vector $\mathbf{y} \in \mathbb{R}^M$. Given linear measurements
+We stack the RF signal measurements $\mathbf{y}_m$ into a measurement vector $\mathbf{y} \in \mathbb{R}^M$. Given linear measurements $$$\mathbf{y}_m = \langle \mathcal{X}, \mathacl{A} \rangle = (\text{vec}(\mathcal{A}))^T \cdot \text{vec}(\mathcal{X})$, $1 \leq m \leq M$ of a loss field tensor $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ with $\mathcal{L}$-rank $r$ and the sensing tensors $\mathcal{A}_m \in \mathbb{R}^{N_1 \times N_2 \times N_3}$. With a linear map $\mathcal{H}(\cdot):\mathbb{R}^{N_1 \times N_2 \times N_3}} \to \mathbb{R}}^M. We get:
+\begin{equation}
+    $\mathbf{y} = \mathcal{H}(\mathal{X}) + \mathbf{w}, $
+\end{equation}
+where $\mathbf{w}$ denotes the noise vector. 
+
+The goal of RF tomographic imaging is to recover the loss field tensor $\mathcal{X}$ from the measurement vector $\mathbf{y}$. We formulate this problem as a low $\mathcal{L}$-rank tensor sensing problem:
+\begin{eqnarray*}
+    \widehat{\mathcal{X}} =
+    \arg \underset{ \mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}} \min \ \| \mathbf{y} - \mathcal{H}(\mathcal{X}) \|_F^2 , \\
+    \text{s.t.} \text{rank}(\mathcal{X}) \leq r .
+\end{eqnarray*}
 \unskip
-\subsubsection{Subsubsection}
+\subsubsection{The Alt-min Algorithm}
+To enable alternating minimization, we represent the loss field tensor as the $\mathcal{L}$-product of two smaller tensors, i.e., $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{X} \in \mathbb{R}^{r \times N_2 \times N_3}$.
+Then we reformulate equation (6) as the following non-convex optimization problem:
+\begin{eqnarray*}
+    \widehat{\mathcal{X}} =
+    \arg \underset{ \mathcal{U} \in \mathbb{R}^{N_1 \times r \times N_3}, \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}} \min \ \| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , \\
+\end{eqnarray*}
+
+The main idea if Alt-min is to iteratetively estimate two low $\mathcal{L}$-rank tensors $\mathcal{U}$ and $\mathcal{V}$, each of $\mathcal{L}$ rank $r$. The key step is least 
+squares(LS) minimization. The detailed implemention of LS minimization are given below.
+
+We use the operater circ($\bullet$) to map circulants to their corresponding circular matrices which are tagged with the superscript $c$, i.e. $\underline{\alpha}^c, \underline{\mathbf{A}}^c$:
+\[
+    \underline{\alpha}^c = \text{circ}(\underline{\alpha}) = \begin{bmatrix}
+        \alpha_1 & \alpha_{N_3} & \cdots  & \alpha_2 \\
+        \alpha_2 & \alpha_1 & \cdots & \cdots \\
+        \vdots & \vdots & \vdots & \alpha_{N_3} \\
+        \alpha_{N_3} & \alpha_{N_3-1} & \cdots \alpha_1
+    \end{bmatrix}
+    \]
+    \[
+        \underline{\mathbf{A}}^c = \text{circ}(\underline{\mathbf{A}}) = \begin{bmatrix}
+            \text{circ}(\underline{\mathbf{A}_{1,1}})  & \cdots & \text{circ}(\underline{A}_{1,N_2)}) \\
+            \vdots & \vdots & \vdots \\
+            \text{circ}(\underline{\mathbf{A}_{N_1,1}})  & \cdots & \text{circ}(\underline{A}_{N_1,N_2)}) \\
+        \end{bmatrix}
+        \]
+
+For simplicity, we use $\mathcal{A}^c$ to represent the cicular matrixof tensor $\mathcal{A}$.Then the $\mathcal{L}$-product $\mathcal{$X} = \mathcal{U} \bullet \mathcal{V}$ has an equivalent matrix-product as:
+\begin{equation}
+    \mathbf{X}^c = \mathbf{U}^c\mthabf{V}^c,
+\end{equation}
+where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \mathbb{R}^{N_1N_3\times rN_3}$, $\mathbf{V}^c \in \mathbb{R}^{rN_3\times N_2N_3}$. We can transform the LS minimization in Alg.2 to the corresponding circular matrix representation:
+\begin{eqnarray*}
+    \widehat{\mathbf{V}}^c =
+    \arg \underset{ \mathbf{V} \in \mathbb{R}^{rN_3 \times N_2N_3}} \min \ \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 , \\
+\end{eqnarray*}
+where $\mathcal{H}^c(\bullet): \mathbb{R}^{N_1N_2 \times N_2N_3} \to \mathbb{R}^M$ is the corresponding linear map inthe circular matrix representation, with $$\mathbf{y} = \mathcal{H}^c(\mathbf{X}^c)$. Each sensing tensor $\mathcal{A}_m$ is transfomed into its circular matrix $\mathbf{A}^c_m \in \mathbb{R}^{N_1N3 \times N_2N_3}$, and $\mathbf{y}_m = \land \mathbf{X}^c, \mathbf{A}^c_m \rangle$, $1 \leq m \leq M$. Similarly, we can estimate $\mathbf{U}^c$ in the follow way:
+\begin{eqnarray*}
+    \widehat{\mathbf{U}}^c =
+    \arg \underset{ \mathbf{U} \in \mathbb{R}^{rN_3 \times N_2N_3}} \min \ \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 . \\
+\end{eqnarray*}
+
+We perform the following steps to solve this non-convex optimization problem:
+\begin{steps}
+$\item $\mathbf{U}^c$ is used to form a block diagonal matrix $\mathbf{B}_1$ of size $N_1N_2N^2_3 \times rN_2N^2_3$, and the number of $\mathbf{U}^c$ is $N_2N_3$,
+    \[
+        \mathcal{B}_1 = 
+        \begin{bmatrix}
+            \mathcal{U}^c & & & \\
+            & \mathcal{U}^c & & \\
+            & & \ddots & \\
+            & & & \mathcal{U}^c
+        \end{bmatrix}
+    \]
+\item Stack all the columns of $\mathbf{V}^c$, and then $\mathbf{V}^c$ is vectorized to a vector $\mathbf{b}$ of size $rN_2N_3N^2_3 \times 1$ as follows:
+    \begin{eqnarray*}
+        \mathbf{b} = \text{vec}(\mathbf{V}^c) \\
+        =[\mathbf{V}^c(:,1)^T, \mathbf{V}^c(:,2)^T, \dots, \mathbf{V}^c(:,N_2N_3)^T]^T.
+    \end{eqnarray*}
+
+\item Each $\mathbf{A}^c_m$, $1 \leq m \leq M$ is represented as a vector $\mathbf{c}_m$ of size $N_1N_2N^2_3 \times 1$ in the following way:
+    \begin{eqnarray*}
+        \mathbf{c}_m = \text{vec}(\mathbf{A}^c_m) \\
+        =[\mathbf{A}^c_m(:,1)^T, \mathbf{A}^c_m(:,2)^T, \dots, \mathbf{A}^c_m(:,N_2N_3)^T]^T.
+    \end{eqnarray*}
+
+    and then all the $\mathbf{c}_m$ are transfomed into a matrix $\mathbf{B}_2$ of size $M \times N_1N_2N^2_3$:
+    \[
+        \mathbf{B}_2 = [\mathbf{c}_1, \mathbf{c}_2, \dots, \mathbf{c}_M]^T
+    \]
+    Therefore, the estimation of $\mathbf{V}^c$ is transformed into the following standard least squares minimization problem:
+    \[
+        \begin{eqnarray*}
+            \widehat{\mathbf{b}}^c =
+            \arg \underset{ \mathbf{b} \in \mathbb{R}^{rN_2N^2_3 \times 1}} \min \ \| \mathbf{y} - \mathbf{B}_2\mathbf{B}_1b) \|_F^2 , \\
+        \end{eqnarray*}
+    \]
+
 
 Bulleted lists look like this:
 \begin{itemize}[leftmargin=*,labelsep=5.8mm]
