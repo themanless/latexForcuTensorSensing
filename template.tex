@@ -5,7 +5,11 @@
 
 %=================================================================
 \documentclass[journal,article,submit,moreauthors,pdftex,10pt,a4paper]{Definitions/mdpi} 
-
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}  % Use Input in the format of Algorithm
+\renewcommand{\algorithmicensure}{\textbf{Output:}} % Use Output in the format of Algorithm
 \usepackage{amsthm}
 \usepackage{amsmath}
 \usepackage{enumitem}
@@ -211,6 +215,31 @@ The goal of RF tomographic imaging is to recover the loss field tensor $\mathcal
 \end{eqnarray*}
 \unskip
 \subsubsection{The Alt-min Algorithm}
+\begin{algorithm}[htb]
+    \caption{Alt-min: AM($\mathcal{H}(\bullet), \mathbf{y}, r, L$)}
+    \label{alg:AM}
+    \begin{algorithmic}[1]
+        \Require
+        linear map $\mathcal{H}(\bullet)$, measurement vector $\mathbf{y}$, $\mathbf{L}$-rank $r$, iteration number $L$.
+        \State Initialize $\mathcal{U}^0$ randomly;
+        \For{$\ell = 1$ to $L$} 
+            \State $\mathcal{V}^{\ell} \gets \text{LS}(\mathcal{H}(\bullet), \mathca{U}^{\ell -1}, \mathbf{y}, r)$
+            \State $\mathcal{U}^{\ell} \gets \text{LS}(\mathcal{H}(\bullet), \mathca{V}^{\ell}, \mathbf{y}, r)$
+            \EndFor
+        \Ensure: Pair of tensors ($\mathcal{U}^L, \mathcal{V}^L).
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htb]
+    \caption{Least Squares Minimization: LS($\mathcal{H}(\bullet), \mathcal{U}, r, \mathbf{Y}$)}
+    \label{alg:LS}
+    \begin{algorithmic}[2]
+        \Require
+        linear map $\mathcal{H}(\bullet)$, tensor $\mathcal{U} \in \mathbb{R}^{N_1\times r \times N_3}$, measurement vector $\mathbf{y}$, $\mathbf{L}$-rank $r$.
+    $\widehat{\mathcal{V}} =
+    \mathop{\arg\min}_{ \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , \\$
+    \end{algorithmic}
+\end{algorithm}
 To enable alternating minimization, we represent the loss field tensor as the $\mathcal{L}$-product of two smaller tensors, i.e., $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{X} \in \mathbb{R}^{r \times N_2 \times N_3}$.
 Then we reformulate equation (6) as the following non-convex optimization problem:
 \begin{eqnarray*}
@@ -245,7 +274,7 @@ For simplicity, we use $\mathcal{A}^c$ to represent the circular matrix of tenso
 where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \mathbb{R}^{N_1N_3\times rN_3}$, $\mathbf{V}^c \in \mathbb{R}^{rN_3\times N_2N_3}$. We can transform the LS minimization in Alg.2 to the corresponding circular matrix representation:
 \begin{eqnarray*}
     \widehat{\mathbf{V}}^c = 
-    \mathop{\arg\min}_{ \mathbf{V} \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 , \\
+    \mathop{\arg\min}_{ \mathbf{V}^c \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 , \\
 \end{eqnarray*}
 where $\mathcal{H}^c(\bullet): \mathbb{R}^{N_1N_2 \times N_2N_3} \to \mathbb{R}^M$ is the corresponding linear map inthe circular matrix representation, with $\mathbf{y} = \mathcal{H}^c(\mathbf{X}^c)$. Each sensing tensor $\mathcal{A}_m$ is transfomed into its circular matrix $\mathbf{A}^c_m \in \mathbb{R}^{N_1N3 \times N_2N_3}$, and $\mathbf{y}_m = \land \mathbf{X}^c, \mathbf{A}^c_m \rangle$, $1 \leq m \leq M$. Similarly, we can estimate $\mathbf{U}^c$ in the follow way:
 \begin{eqnarray*}
@@ -286,6 +315,35 @@ We perform the following steps to solve this non-convex optimization problem:
         \end{eqnarray*}
 
 \end{steps}
+
+\subsection{Algorithm implemention on GPU}
+\subsubsection{Optmization of Alt-min}
+In circular algebra, it is obvious that the first column of $\underline{\alpha}^c$ already contains all the entries of itself, and there is no need to recover the redundant information.We only need to recover the first column of each circ($\underline{\mathbf{X}}_{i,j}$). We use the Matlab function squeeze($\bullet$)  to get a new definition:
+\[
+    \mathbf{X}^s = \begin{bmatrix}
+        \text{squeeze}(\mathcal{X}(1,1,:)) & \cdots & \text{squeeze}(\mathcal{X}(1,N_2,:)) \\
+        \vdots & \ddots & \vdots \\
+        \text{squeeze}(\mathcal{X}(N_1,1,:)) & \cdots & \text{squeeze}(\mathcal{X}(N_1,N_2,:))
+    \end{bmatrix}
+\]
+where squeeze$(\mathcal{X}(i,j:))$ transforms the $i$-th tube of the $j$-th lateral slice of $\mathcal{X}$ into a vector of size $N_3 \times 1$.
+
+We use the notation $\Leftrightarrow$ todenote a new mapping for $\mathcal{L}$-product as follows:
+\[
+    \mathcal{X} = \mathcal{U}\bullet \mathcal{V} & \Leftrightarrow & \mathbf{X}^s = \mathbf{U}^c\mathbf{V}^s,
+\]
+where $\mathbf{X}^s \in \mathbbf{R}^{N_1N_3 \times N_2}$, $\mathbf{U}^c \in \mathbbf{R}^{N_1N_3 \times N_3}$, $\mathbf{V}^s \in \mathbbf{R}^{rN_3 \times N_2}$. We can transform the LS minimization in Alg.2 to the following representation:
+\begin{eqnarray*}
+    \widehat{\mathbf{V}}^s = 
+    \mathop{\arg\min}_{ \mathbf{V}^s \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^s(\mathbf{U}^c\mathbf{V}^s) \|_F^2 , \\
+\end{eqnarray*}
+where $\mathcal{H}^s(\bullet):\mathbb{R}^{N_1N_3\times N_2} \to \mathbb{R}^{M}$ is the corresponding linear map, with $\mathbf{y} = \mathbf{H}^s(\mathbf{X}^s), \mathbf{y}_m = \langle \mathbf{X}^s, \mathbf{A}^s_m \rangle$, $1 \leq m \leq M$.
+Similarly, we can estimate $\mathbf{U}^c$ in the following way:
+\begin{eqnarray*}
+    \widehat{\mathbf{U}}^c = 
+    \mathop{\arg\min}_{ \mathbf{U}^c \in \mathbb{R}^{N_1N_3 \times rN_3}} \| \mathbf{y} - {\mathcal{H}^s}^T({\mathbf{U}^c}^T{\mathbf{V}^s}^T) \|_F^2 , \\
+\end{eqnarray*}
+
 
 Bulleted lists look like this:
 \begin{itemize}[leftmargin=*,labelsep=5.8mm]
