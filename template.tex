@@ -216,28 +216,29 @@ The goal of RF tomographic imaging is to recover the loss field tensor $\mathcal
 \unskip
 \subsubsection{The Alt-min Algorithm}
 \begin{algorithm}[htb]
-    \caption{Alt-min: AM($\mathcal{H}(\bullet), \mathbf{y}, r, L$)}
+    \caption{Alt-min: AM($\mathcal{H}(\cdot), \mathbf{y}, r, L$)}
     \label{alg:AM}
     \begin{algorithmic}[1]
         \Require
-        linear map $\mathcal{H}(\bullet)$, measurement vector $\mathbf{y}$, $\mathbf{L}$-rank $r$, iteration number $L$.
+        linear map $\mathcal{H}(\cdot)$, measurement vector $\mathbf{y}$, $\mathcal{L}$-rank $r$, iteration number $L$.
         \State Initialize $\mathcal{U}^0$ randomly;
         \For{$\ell = 1$ to $L$} 
-            \State $\mathcal{V}^{\ell} \gets \text{LS}(\mathcal{H}(\bullet), \mathca{U}^{\ell -1}, \mathbf{y}, r)$
-            \State $\mathcal{U}^{\ell} \gets \text{LS}(\mathcal{H}(\bullet), \mathca{V}^{\ell}, \mathbf{y}, r)$
+            \State $\mathcal{V}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathca{U}^{\ell -1}, \mathbf{y}, r)$
+            \State $\mathcal{U}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathca{V}^{\ell}, \mathbf{y}, r)$
             \EndFor
-        \Ensure: Pair of tensors ($\mathcal{U}^L, \mathcal{V}^L).
+        \Ensure: Pair of tensors ($\mathcal{U}^L, \mathcal{V}^L$).
     \end{algorithmic}
 \end{algorithm}
 
 \begin{algorithm}[htb]
-    \caption{Least Squares Minimization: LS($\mathcal{H}(\bullet), \mathcal{U}, r, \mathbf{Y}$)}
+    \caption{Least Squares Minimization: LS($\mathcal{H}(\cdot), \mathcal{U}, r, \mathbf{Y}$)}
     \label{alg:LS}
     \begin{algorithmic}[2]
         \Require
-        linear map $\mathcal{H}(\bullet)$, tensor $\mathcal{U} \in \mathbb{R}^{N_1\times r \times N_3}$, measurement vector $\mathbf{y}$, $\mathbf{L}$-rank $r$.
-    $\widehat{\mathcal{V}} =
-    \mathop{\arg\min}_{ \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , \\$
+        linear map $\mathcal{H}(\cdot)$, tensor $\mathcal{U} \in \mathbb{R}^{N_1\times r \times N_3}$, measurement vector $\mathbf{y}$, $\mathbf{L}$-rank $r$.
+    \State \begin{eqnarray*} \widehat{\mathcal{V}} = \mathop{\arg\min}_{ \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , 
+    \end{eqnarray*}
+    \Ensure tensor $\mathcal{V}$
     \end{algorithmic}
 \end{algorithm}
 To enable alternating minimization, we represent the loss field tensor as the $\mathcal{L}$-product of two smaller tensors, i.e., $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{X} \in \mathbb{R}^{r \times N_2 \times N_3}$.
@@ -269,7 +270,7 @@ We use the operater circ($\bullet$) to map circulants to their corresponding cir
 
 For simplicity, we use $\mathcal{A}^c$ to represent the circular matrix of tensor $\mathcal{A}$.Then the $\mathcal{L}$-product $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$ has an equivalent matrix-product as:
 \begin{equation}
-    \mathbf{X}^c = \mathbf{U}^c\mthabf{V}^c,
+    \mathbf{X}^c = \mathbf{U}^c\mathabf{V}^c,
 \end{equation}
 where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \mathbb{R}^{N_1N_3\times rN_3}$, $\mathbf{V}^c \in \mathbb{R}^{rN_3\times N_2N_3}$. We can transform the LS minimization in Alg.2 to the corresponding circular matrix representation:
 \begin{eqnarray*}
