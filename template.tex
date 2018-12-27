@@ -1,18 +1,18 @@
-%  LaTeX support: latex@mdpi.com 
-%  In case you need support, please attach all files that are necessary for compiling as well as the log file, and specify the details of your LaTeX setup (which operating system and LaTeX version / tools you are using).
-
-% You need to save the "mdpi.cls" and "mdpi.bst" files into the same folder as this template file.
-
-%=================================================================
 \documentclass[journal,article,submit,moreauthors,pdftex,10pt,a4paper]{Definitions/mdpi} 
 \usepackage{algorithm}
+\usepackage{algorithmicx}
 \usepackage{algpseudocode}
+\floatname{algorithm}{procedure}
 \usepackage{amsmath}
 \renewcommand{\algorithmicrequire}{\textbf{Input:}}  % Use Input in the format of Algorithm
 \renewcommand{\algorithmicensure}{\textbf{Output:}} % Use Output in the format of Algorithm
 \usepackage{amsthm}
 \usepackage{amsmath}
 \usepackage{enumitem}
+\usepackage{listings}
+\usepackage{color} %red, green, blue, yellow, cyan, magenta, black, white
+\definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
+\definecolor{mylilas}{RGB}{170,55,241}
 \newlist{steps}{enumerate}{1}
 \setlist[steps, 1]{label = Step \arabic*).}
 \theoremstyle{plain}
@@ -167,19 +167,20 @@ The template details the sections that can be used in a manuscript. Note that th
 
 \section{Introduction}
 
- 
+\section{Related Work}
+RF Tomographic imaging [1, 2] is an inference technique which can be used for remotely learning the locations and the shapes of objects.
+There have been considerable works on reconstruction methods for RF tomographic imaging which can be catego- rized into vector-based and tensor-based methods. In [1, 5], vector-based compressed sensing approaches for RF tomo-graphic imaging are proposed.These vector-based methods are designed to infer two-dimensional spaces, and they do not have the ability to estimate three-dimensional spaces since spatial structures of the data are inherently ignored. Refer- ence [4] proposes the tensor-based compressed sensing algo- rithm using tensor nuclear norm (TNN) [6], which extends the RF tomographic imaging problem to three-dimensional case.
+
+Many existing researches \cite{jing2016energy} \cite{zhang2015buddy} \cite{zhang2015efficient} \cite{zhang2014cuirre} \cite{zhang2016efficient} have demonstrated the benefit of utilizing GPUs to accelerate general purpose computing. Because of the massive parallelism and high memory bandwidth, GPUs are often used in accelerating machine learning applications \cite{chetlur2014cudnn} \cite{cui2016geeps} \cite{tsung2016high} \cite{banasiak2016statistical}.  Recently it has been applied to accelerate tensor contractions \cite{shi2016tensor} and the proposed new BLAS-like primitive called STRIDEDBATCHEDGEMM is capable of performing a wide range of tensor contractions on CPU and GPU efficiently. Sparse tensor-times-dense matrix multiply is a critical bottleneck in data analysis and mining applications and \cite{li2016optimizing} proposed an efficient primitive on CPU and GPU platforms. Solving large numbers of small linear algebra problems simultaneously is becoming increasingly important in many application areas and \cite{dongarra2017optimized} made a systematic work to optimize batched linear algebra for GPUs.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Background overview}
 
-\begin{quote}
     We first formulate the RF tomographic imaging task as a tensor sensing problem, then review the Alt-Min algorithm. 
-\end{quote}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Notations and Problem Formulation}
 We use lowercase boldface letter $\mathbf{x} \in \mathbb{R}^{N_1}$ to denote a vector, uppercase boldface letter $\mathbf{X} \in \mathbb{R}^{N_1 \times N_2}$ to denote a matrix, 
 and calligraphic letter $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ to denote a tensor. $[k]$ denotes the set $\{1,2,\dots, k\}$. Let $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ 
-denote a third-order tensor. $\mathcal{A}(:,j,k)$, $\mathcal{A}(i,:,k)$, $\mathcal{A}(i,j:)$ denote mode-1, mode-2, mode-3 tubes of $\mathcal{A}$, and $\mathcal{A}(:,:,k)$, $\mathcal{A}(:,j,:)$ $\mathcal{A}(i,:,:)$ 
+denote a thirdorder tensor. $\mathcal{A}(:,j,k)$, $\mathcal{A}(i,:,k)$, $\mathcal{A}(i,j:)$ denote mode-1, mode-2, mode-3 tubes of $\mathcal{A}$, and $\mathcal{A}(:,:,k)$, $\mathcal{A}(:,j,:)$ $\mathcal{A}(i,:,:)$ 
 denote the frontal, lateral, and horizontal slices. The Frobenius norm of $\mathcal{A}$ is defined as $\|\mathcal{A}\|_F = \sqrt{\sum ^{N_1}_{i = 1} \sum ^{N_2}_{j = 1} \sum ^{N_3}_{k = 1} \mathcal{A}^2_{ijk}}$.
 The operator vec(.) transforms tensors and matrices into vectors. Let $\mathbf{X}^{T}$ and $\mathcal{A}^{\dagger}$ denote the transposes of a matrix and a tensor, respectively.
 \begin{defn}
@@ -199,23 +200,22 @@ The operator vec(.) transforms tensors and matrices into vectors. Let $\mathbf{X
     The transform domain singular value decomposition $\mathcal{L}$-SVD of $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ is given by $\mathcal{A} = \mathcal{U} \bullet \mathcal{S} \bullet \mathcal{V}^{\dagger}$, where $\mathcal{U}$ and $\mathcal{V}$ are $\mathcal{L}$-orthogonal tensors of size $N_1 \times N_1 \times N_3$ and $N_2 \times N_2 \times N_3$ respectively, and $\mathcal{S}$ is a diagonal tensor of size $N_1 \times N_2 \times N_3$. The entries of $\mathcal{S}$ are called the singular values of $\mathcal{A}$, and the number of non-zero ones is called the $\mathcal{L}$-rank of $\mathcal{A}$.
 \end{defn}
 
-Let $K$ be the number if nodes within the network, then the total number if two-way links we can obtain is $S = (K^2 - K )/2$. Assuming that we implement $M(1 \leq M \leq S)$ times measurements, and each measurement involves a unique link. Those $M$ nodes pairs are indexed as $(v_{i_m}, v_{j_m})$, $m \in [M]$. We obtain the following linear measurement:
+We stack the RF signal measurements $\mathbf{y}_m$ into a measurement vector $\mathbf{y} \in \mathbb{R}^M$. Given linear measurements $\mathbf{y}_m = \langle \mathcal{X}, \mathcal{A} \rangle = (\text{vec}(\mathcal{A}))^T \cdot \text{vec}(\mathcal{X})$, $1 \leq m \leq M$ of a loss field tensor $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ with $\mathcal{L}$-rank $r$ and the sensing tensors $\mathcal{A}_m \in \mathbb{R}^{N_1 \times N_2 \times N_3}$. With a linear map $\mathcal{H}(\cdot):\mathbb{R}^{N_1 \times N_2 \times N_3} \to \mathbb{R}^M$. We get:
 \begin{equation}
-    \mathbf{y}_m = P_t - P_{i_mj_m} - \bar{P}(d_{i_m}, 
-\end{equation}
-We stack the RF signal measurements $\mathbf{y}_m$ into a measurement vector $\mathbf{y} \in \mathbb{R}^M$. Given linear measurements $\mathbf{y}_m = \langle \mathcal{X}, \mathacl{A} \rangle = (\text{vec}(\mathcal{A}))^T \cdot \text{vec}(\mathcal{X})$, $1 \leq m \leq M$ of a loss field tensor $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ with $\mathcal{L}$-rank $r$ and the sensing tensors $\mathcal{A}_m \in \mathbb{R}^{N_1 \times N_2 \times N_3}$. With a linear map $\mathcal{H}(\cdot):\mathbb{R}^{N_1 \times N_2 \times N_3} \to \mathbb{R}^M$. We get:
-\begin{equation}
-    \mathbf{y} = \mathcal{H}(\mathal{X}) + \mathbf{w},
+    \mathbf{y} = \mathcal{H}(\mathcal{X}) + \mathbf{w},
 \end{equation}
 where $\mathbf{w}$ denotes the noise vector. 
 
 The goal of RF tomographic imaging is to recover the loss field tensor $\mathcal{X}$ from the measurement vector $\mathbf{y}$. We formulate this problem as a low $\mathcal{L}$-rank tensor sensing problem:
-\begin{eqnarray*}
-    \widehat{\mathcal{X}} = \mathop{\arg\min}_{ \mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}}  \| \mathbf{y} - \mathcal{H}(\mathcal{X}) \|_F^2 , \\ \text{s.t.} \text{rank}(\mathcal{X}) \leq r .
-\end{eqnarray*}
-\unskip
-\subsubsection{The Alt-min Algorithm}
+\begin{equation}
+    \label{eqa:lstm}
+    \widehat{\mathcal{X}} = \mathop{\arg\min}_{\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}}  \| \mathbf{y} - \mathcal{H}(\mathcal{X}) \|_F^2 , \\ 
+    \text{s.t.} \text{rank}(\mathcal{X}) \leq r .
+\end{equation}
+
+\subsection{The Alt-min Algorithm}
 \begin{algorithm}[htb]
+\setstretch{2}
     \caption{Alt-min: AM($\mathcal{H}(\cdot), \mathbf{y}, r, L$)}
     \label{alg:AM}
     \begin{algorithmic}[1]
@@ -223,223 +223,333 @@ The goal of RF tomographic imaging is to recover the loss field tensor $\mathcal
         linear map $\mathcal{H}(\cdot)$, measurement vector $\mathbf{y}$, $\mathcal{L}$-rank $r$, iteration number $L$.
         \State Initialize $\mathcal{U}^0$ randomly;
         \For{$\ell = 1$ to $L$} 
-            \State $\mathcal{V}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathca{U}^{\ell -1}, \mathbf{y}, r)$
-            \State $\mathcal{U}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathca{V}^{\ell}, \mathbf{y}, r)$
+            \State $\mathcal{V}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathcal{U}^{\ell -1}, \mathbf{y}, r)$
+            \State $\mathcal{U}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathcal{V}^{\ell}, \mathbf{y}, r)$
             \EndFor
         \Ensure: Pair of tensors ($\mathcal{U}^L, \mathcal{V}^L$).
     \end{algorithmic}
 \end{algorithm}
 
 \begin{algorithm}[htb]
+\setstretch{2}
     \caption{Least Squares Minimization: LS($\mathcal{H}(\cdot), \mathcal{U}, r, \mathbf{Y}$)}
     \label{alg:LS}
     \begin{algorithmic}[2]
         \Require
         linear map $\mathcal{H}(\cdot)$, tensor $\mathcal{U} \in \mathbb{R}^{N_1\times r \times N_3}$, measurement vector $\mathbf{y}$, $\mathbf{L}$-rank $r$.
-    \State \begin{eqnarray*} \widehat{\mathcal{V}} = \mathop{\arg\min}_{ \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , 
-    \end{eqnarray*}
+    \State \[
+    \widehat{\mathcal{V}} = \mathop{\arg\min}_{\mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , 
+    \]
     \Ensure tensor $\mathcal{V}$
     \end{algorithmic}
 \end{algorithm}
 To enable alternating minimization, we represent the loss field tensor as the $\mathcal{L}$-product of two smaller tensors, i.e., $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{X} \in \mathbb{R}^{r \times N_2 \times N_3}$.
-Then we reformulate equation (6) as the following non-convex optimization problem:
-\begin{eqnarray*}
+Then we reformulate equation \eqref{eqa:lstm} as the following non-convex optimization problem:
+\begin{equation}
     \widehat{\mathcal{X}} =
     \mathop{\arg\min}_{ \mathcal{U} \in \mathbb{R}^{N_1 \times r \times N_3}, \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , \\
-\end{eqnarray*}
+\end{equation}
 
 The main idea if Alt-min is to iteratetively estimate two low $\mathcal{L}$-rank tensors $\mathcal{U}$ and $\mathcal{V}$, each of $\mathcal{L}$ rank $r$. The key step is least 
 squares(LS) minimization. The detailed implemention of LS minimization are given below.
 
-We use the operater circ($\bullet$) to map circulants to their corresponding circular matrices which are tagged with the superscript $c$, i.e. $\underline{\alpha}^c, \underline{\mathbf{A}}^c$:
+We use the operater circ($\cdot$) to map circulants to their corresponding circular matrices which are tagged with the superscript $c$, i.e. $\underline{\alpha}^c, \underline{\mathbf{A}}^c$:
 \[
     \underline{\alpha}^c = \text{circ}(\underline{\alpha}) = \begin{bmatrix}
         \alpha_1 & \alpha_{N_3} & \cdots  & \alpha_2 \\
         \alpha_2 & \alpha_1 & \cdots & \cdots \\
         \vdots & \vdots & \vdots & \alpha_{N_3} \\
-        \alpha_{N_3} & \alpha_{N_3-1} & \cdots \alpha_1
+        \alpha_{N_3} & \alpha_{N_3-1} & \cdots & \alpha_1
     \end{bmatrix}
     \]
     \[
         \underline{\mathbf{A}}^c = \text{circ}(\underline{\mathbf{A}}) = \begin{bmatrix}
-            \text{circ}(\underline{\mathbf{A}_{1,1}})  & \cdots & \text{circ}(\underline{\mathcal{A}}_{1,N_2)}) \\
+            \text{circ}(\underline{\mathbf{A}_{1,1}})  & \cdots & \text{circ}(\underline{\mathbf{A}}_{1,N_2)}) \\
             \vdots & \vdots & \vdots \\
-            \text{circ}(\underline{\mathbf{A}_{N_1,1}})  & \cdots & \text{circ}(\underline{\mathcal{A}}_{N_1,N_2)}) \\
+            \text{circ}(\underline{\mathbf{A}_{N_1,1}})  & \cdots & \text{circ}(\underline{\mathbf{A}}_{N_1,N_2)}) \\
         \end{bmatrix}
         \]
 
 For simplicity, we use $\mathcal{A}^c$ to represent the circular matrix of tensor $\mathcal{A}$.Then the $\mathcal{L}$-product $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$ has an equivalent matrix-product as:
 \begin{equation}
-    \mathbf{X}^c = \mathbf{U}^c\mathabf{V}^c,
+    \mathbf{X}^c = \mathbf{U}^c\mathbf{V}^c,
 \end{equation}
-where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \mathbb{R}^{N_1N_3\times rN_3}$, $\mathbf{V}^c \in \mathbb{R}^{rN_3\times N_2N_3}$. We can transform the LS minimization in Alg.2 to the corresponding circular matrix representation:
-\begin{eqnarray*}
+where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \mathbb{R}^{N_1N_3\times rN_3}$, $\mathbf{V}^c \in \mathbb{R}^{rN_3\times N_2N_3}$. We can transform the LS minimization in Alg.\ref{alg:LS} to the corresponding circular matrix representation:
+\begin{equation}
     \widehat{\mathbf{V}}^c = 
     \mathop{\arg\min}_{ \mathbf{V}^c \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 , \\
-\end{eqnarray*}
-where $\mathcal{H}^c(\bullet): \mathbb{R}^{N_1N_2 \times N_2N_3} \to \mathbb{R}^M$ is the corresponding linear map inthe circular matrix representation, with $\mathbf{y} = \mathcal{H}^c(\mathbf{X}^c)$. Each sensing tensor $\mathcal{A}_m$ is transfomed into its circular matrix $\mathbf{A}^c_m \in \mathbb{R}^{N_1N3 \times N_2N_3}$, and $\mathbf{y}_m = \land \mathbf{X}^c, \mathbf{A}^c_m \rangle$, $1 \leq m \leq M$. Similarly, we can estimate $\mathbf{U}^c$ in the follow way:
-\begin{eqnarray*}
+\end{equation}
+where $\mathcal{H}^c(\cdot): \mathbb{R}^{N_1N_2 \times N_2N_3} \to \mathbb{R}^M$ is the corresponding linear map inthe circular matrix representation, with $\mathbf{y} = \mathcal{H}^c(\mathbf{X}^c)$. Each sensing tensor $\mathcal{A}_m$ is transfomed into its circular matrix $\mathbf{A}^c_m \in \mathbb{R}^{N_1N3 \times N_2N_3}$, and $\mathbf{y}_m = \langle \mathbf{X}^c, \mathbf{A}^c_m \rangle$, $1 \leq m \leq M$. Similarly, we can estimate $\mathbf{U}^c$ in the follow way:
+\begin{equation}
     \widehat{\mathbf{U}}^c =
     \mathop{\arg\min}_{ \mathbf{U} \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 . \\
-\end{eqnarray*}
+\end{equation}
 
 We perform the following steps to solve this non-convex optimization problem:
 \begin{steps}
 \item $\mathbf{U}^c$ is used to form a block diagonal matrix $\mathbf{B}_1$ of size $N_1N_2N^2_3 \times rN_2N^2_3$, and the number of $\mathbf{U}^c$ is $N_2N_3$,
-    \[
+    \begin{equation}
         \mathbf{B}_1 = 
         \begin{bmatrix}
-            \mathcal{U}^c & & & \\
-            & \mathcal{U}^c & & \\
+            \mathbf{U}^c & & & \\
+            & \mathbf{U}^c & & \\
             & & \ddots & \\
-            & & & \mathcal{U}^c
+            & & & \mathbf{U}^c
         \end{bmatrix}
-    \]
+    \end{equation}
 \item Stack all the columns of $\mathbf{V}^c$, and then $\mathbf{V}^c$ is vectorized to a vector $\mathbf{b}$ of size $rN_2N_3N^2_3 \times 1$ as follows:
-    \begin{eqnarray}
-        \mathbf{b} = \text{vec}(\mathbf{V}^c) \nonumber\\ & =[\mathbf{V}^c(:,1)^T, \mathbf{V}^c(:,2)^T, \dots, \mathbf{V}^c(:,N_2N_3)^T]^T. \end{eqnarray}
+    \begin{equation}
+        \mathbf{b} = \text{vec}(\mathbf{V}^c) =[\mathbf{V}^c(:,1)^T, \mathbf{V}^c(:,2)^T, \dots, \mathbf{V}^c(:,N_2N_3)^T]^T. 
+    \end{equation}
 
 \item Each $\mathbf{A}^c_m$, $1 \leq m \leq M$ is represented as a vector $\mathbf{c}_m$ of size $N_1N_2N^2_3 \times 1$ in the following way:
-    \begin{eqnarray*}
+    \begin{equation}
         \mathbf{c}_m = \text{vec}(\mathbf{A}^c_m) \\
         =[\mathbf{A}^c_m(:,1)^T, \mathbf{A}^c_m(:,2)^T, \dots, \mathbf{A}^c_m(:,N_2N_3)^T]^T.
-    \end{eqnarray*}
+    \end{equation}
 
     and then all the $\mathbf{c}_m$ are transfomed into a matrix $\mathbf{B}_2$ of size $M \times N_1N_2N^2_3$:
-    \[
+    \begin{equation}
         \mathbf{B}_2 = [\mathbf{c}_1, \mathbf{c}_2, \dots, \mathbf{c}_M]^T
-    \]
+    \end{equation}
     Therefore, the estimation of $\mathbf{V}^c$ is transformed into the following standard least squares minimization problem:
-        \begin{eqnarray*}
+        \begin{equation}
             \widehat{\mathbf{b}} =
-            \mathop\mathop{\arg\min}_{ \mathbf{b} \in \mathbb{R}^{rN_2N^2_3 \times 1}} \| \mathbf{y} - \mathbf{B}_2\mathbf{B}_1b) \|_F^2 , \\
-        \end{eqnarray*}
+            \mathop{\arg\min}_{ \mathbf{b} \in \mathbb{R}^{rN_2N^2_3 \times 1}} \| \mathbf{y} - \mathbf{B}_2\mathbf{B}_1b) \|_F^2 ,
+        \end{equation}
 
 \end{steps}
 
-\subsection{Algorithm implemention on GPU}
-\subsubsection{Optmization of Alt-min}
-In circular algebra, it is obvious that the first column of $\underline{\alpha}^c$ already contains all the entries of itself, and there is no need to recover the redundant information.We only need to recover the first column of each circ($\underline{\mathbf{X}}_{i,j}$). We use the Matlab function squeeze($\bullet$)  to get a new definition:
+\section{Algorithm implemention on GPU}
+\begin{algorithm}
+\setstretch{2}
+\caption{Tensor Sensing on CPU}
+\label{procedure:cpu}
+\begin{algorithmic}[1]
+    \Require randomly initialized $\mathbf{U}_0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
+    \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
+    \For{$i = 1 \to IterNum$} 
+        \State $\mathbf{U}_{d} = \text{diag}(\mathbf{U})$
+        \State $\mathbf{W} = \mathbf{A} \mathbf{U}_{d}$
+        \State $\mathbf{V}_{v} = \mathbf{W} \backslash \mathbf{y}$
+        \State $\text{clear}(\mathbf{W})$
+        \State $\mathbf{V} = \text{Vec2Mat}(\mathbf{V}_{v})$
+        \State $\mathbf{V}_t = \text{transpose}(\mathbf{V})$
+        \State $\mathbf{V}_{t_{d}} = \text{diag}(\mathbf{V}_t)$
+        \State $\mathbf{W} = \mathbf{A}_t \mathbf{V}_{t_{d}}$
+        \State $\mathbf{U}_{v} = \mathbf{W} \backslash \mathbf{y}$
+        \State $\text{clear}(\mathbf{W})$
+        \State $\mathbf{U} = \text{transpose}(\text{Vec2Mat}(\mathbf{U}_{v}))$
+    \EndFor
+    \State \Return $\mathbf{X} = \mathbf{U} \mathbf{V}$
+    \end{algorithmic}
+    \end{algorithm}
+\subsection{Optimization of Alt-min}
+In circular algebra, it is obvious that the first column of $\underline{\alpha}^c$ already contains all the entries of itself, and there is no need to recover the redundant information.We only need to recover the first column of each circ($\underline{\mathbf{X}}_{i,j}$). We use the Matlab function squeeze($\cdot$)  to get a new definition:
 \[
     \mathbf{X}^s = \begin{bmatrix}
         \text{squeeze}(\mathcal{X}(1,1,:)) & \cdots & \text{squeeze}(\mathcal{X}(1,N_2,:)) \\
         \vdots & \ddots & \vdots \\
         \text{squeeze}(\mathcal{X}(N_1,1,:)) & \cdots & \text{squeeze}(\mathcal{X}(N_1,N_2,:))
     \end{bmatrix}
-\]
+\],
 where squeeze$(\mathcal{X}(i,j:))$ transforms the $i$-th tube of the $j$-th lateral slice of $\mathcal{X}$ into a vector of size $N_3 \times 1$.
 
 We use the notation $\Leftrightarrow$ todenote a new mapping for $\mathcal{L}$-product as follows:
-\[
-    \mathcal{X} = \mathcal{U}\bullet \mathcal{V} & \Leftrightarrow & \mathbf{X}^s = \mathbf{U}^c\mathbf{V}^s,
-\]
-where $\mathbf{X}^s \in \mathbbf{R}^{N_1N_3 \times N_2}$, $\mathbf{U}^c \in \mathbbf{R}^{N_1N_3 \times N_3}$, $\mathbf{V}^s \in \mathbbf{R}^{rN_3 \times N_2}$. We can transform the LS minimization in Alg.2 to the following representation:
-\begin{eqnarray*}
+\begin{equation}
+    \mathcal{X} = \mathcal{U}\bullet \mathcal{V} \Leftrightarrow \mathbf{X}^s = \mathbf{U}^c\mathbf{V}^s,
+\end{equation}
+where $\mathbf{X}^s \in \mathbf{R}^{N_1N_3 \times N_2}$, $\mathbf{U}^c \in \mathbf{R}^{N_1N_3 \times N_3}$, $\mathbf{V}^s \in \mathbf{R}^{rN_3 \times N_2}$. We can transform the LS minimization in Alg.2 to the following representation:
+\begin{equation}
     \widehat{\mathbf{V}}^s = 
     \mathop{\arg\min}_{ \mathbf{V}^s \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^s(\mathbf{U}^c\mathbf{V}^s) \|_F^2 , \\
-\end{eqnarray*}
-where $\mathcal{H}^s(\bullet):\mathbb{R}^{N_1N_3\times N_2} \to \mathbb{R}^{M}$ is the corresponding linear map, with $\mathbf{y} = \mathbf{H}^s(\mathbf{X}^s), \mathbf{y}_m = \langle \mathbf{X}^s, \mathbf{A}^s_m \rangle$, $1 \leq m \leq M$.
+\end{equation}
+where $\mathcal{H}^s(\cdot):\mathbb{R}^{N_1N_3\times N_2} \to \mathbb{R}^{M}$ is the corresponding linear map, with $\mathbf{y} = \mathbf{H}^s(\mathbf{X}^s), \mathbf{y}_m = \langle \mathbf{X}^s, \mathbf{A}^s_m \rangle$, $1 \leq m \leq M$.
 Similarly, we can estimate $\mathbf{U}^c$ in the following way:
-\begin{eqnarray*}
+\begin{equation}
     \widehat{\mathbf{U}}^c = 
     \mathop{\arg\min}_{ \mathbf{U}^c \in \mathbb{R}^{N_1N_3 \times rN_3}} \| \mathbf{y} - {\mathcal{H}^s}^T({\mathbf{U}^c}^T{\mathbf{V}^s}^T) \|_F^2 , \\
-\end{eqnarray*}
+\end{equation}
 
-
-Bulleted lists look like this:
-\begin{itemize}[leftmargin=*,labelsep=5.8mm]
-\item	First bullet
-\item	Second bullet
-\item	Third bullet
-\end{itemize}
-
-Numbered lists can be added as follows:
-\begin{enumerate}[leftmargin=*,labelsep=4.9mm]
-\item	First item 
-\item	Second item
-\item	Third item
-\end{enumerate}
-
-The text continues here.
-
-\subsection{Figures, Tables and Schemes}
-
-All figures and tables should be cited in the main text as Figure 1, Table 1, etc.
-
+%psuado code
+So we can get the pseudocode of the tensor sensing as following:
+\subsection{Data Struct}
+In procedure \ref{procedure:cpu}, after least squares minimization(line 4 and 10), we get vectorized matrices. For a matrix $\mathbf{A} \in \mathbb{R}^{m \times n}$, the corresponding vectorized $\mathbf{A}$ is $\mathbf{A}_v \in \mathbb{R}^{mn \times 1}$. And the vectorized matrices are converted back to the original matrices(line 5 and 11). In some scientific computing programming languages, such as Matlab, this conversion must be done with the appropriate conversion function.
+We adopt the column-first storage format to store matrices and vectors, which not only ensures read and write continuity but also avoids explicit vector-to-matrix conversions that occur in original Matlab code because in this format $\mathbf{A}_v$ and $\mathbf{A}$ are the same in memory.
 \begin{figure}[H]
 \centering
-\includegraphics[width=2 cm]{Definitions/logo-mdpi}
-\caption{This is a figure, Schemes follow the same formatting. If there are multiple panels, they should be listed as: (\textbf{a}) Description of what is contained in the first panel. (\textbf{b}) Description of what is contained in the second panel. Figures should be placed in the main text near to the first time they are cited. A caption on a single line should be centered.}
-\end{figure}   
- 
-Text
+\includegraphics[width=0.7\textwidth]{vec2mat.png}
+\caption{$\mathbf{A}$ and vec($\mathbf{A}$) in memory}
+\label{Fig:vec2mat}
+\end{figure}
 
-Text
-
-\begin{table}[H]
-\caption{This is a table caption. Tables should be placed in the main text near to the first time they are cited.}
+\subsection{Multiply of Block Diagonal Matrices}
+Using the operational properties of the block matrix we get:
+\begin{equation}
+        [\mathbf{A}_1, \mathbf{A}_2, \cdots, \mathbf{A}_{N_2}]
+        \begin{bmatrix}
+            \mathbf{U}^c & & & \\
+            & \mathbf{U}^c & & \\
+            & & \ddots & \\
+            & & & \mathbf{U}^c
+        \end{bmatrix}
+        =
+        [\mathbf{A}_1\mathbf{U}^c, \mathbf{A}_2\mathbf{U}^c, \cdots, \mathbf{A}_{N_2}\mathbf{U}^c]
+\label{step1}
+\end{equation}
+It shows that Multiplication of block diagonal matrices can be transformed into a batch of small matrix multiplications. 
+As we use column-first format to store $\mathbf{A}$, the batch of $\mathbf{A}_i$ are stored in constant stride. Let $p$ indicate the location of the first element of $\mathbf{A}_0$, then the location of the first element of $\mathbf{A}_i$ is $p+i\times N_1N_3$.  We adopt $cublas<t>gemmStridedBatchd()$ function in cuBlas Library to achieve parallelism of operations.
+\begin{figure}[H]
 \centering
-%% \tablesize{} %% You can specify the fontsize here, e.g.,  \tablesize{\footnotesize}. If commented out \small will be used.
-\begin{tabular}{ccc}
-\toprule
-\textbf{Title 1}	& \textbf{Title 2}	& \textbf{Title 3}\\
-\midrule
-entry 1		& data			& data\\
-entry 2		& data			& data\\
-\bottomrule
+\includegraphics[width=0.7\textwidth]{diagMM.pdf}
+\caption{Multiplication of block diagonal matrices on GPU}
+\label{Fig:diagMM}
+\end{figure}
+
+\begin{table}
+\caption{$cublas<t>gemmStridedBatchd$ parameter settings}
+\label{tab:gemm}
+\begin{tabular}{|l|l|l|}
+\hline
+Parameters & meaning & value \\
+\hline
+transA & operation op($\mathbf{A}$) that is non- or transpose & non-transpose \\
+\hline
+transU & operation op($\mathbf{U}$) that is non- or transpose & transpose \\
+\hline
+$\mathbf{A}$ & pointer to the $\mathbf{A}$ matrix corresponding to the first instance of the batch & $d_A$ \\
+\hline
+$\mathbf{U}$ & pointer to the $\mathbf{U}$ matrix & $d_y$ \\
+\hline
+$\mathbf{W}$ & pointer to the $\mathbf{W}$ matrix & $d_W$ \\
+\hline
+strideA & the address offset between $\mathbf{A}_i$ and $\mathbf{A}_{i+1}$ & $M\times N_1N_3$ \\
+\hline
+strideU & the address offset between $\mathbf{U}_i$ and $\mathbf{U}_{i+1}$ & 0 \\
+\hline
+strideW & the address offset between $\mathbf{W}_i$ and $\mathbf{W}_{i+1}$ & $M\times N_3$ \\
+\hline
+batchNum & number of $gemm$ to perform in the batch & $N_2$ \\
+\hline
 \end{tabular}
 \end{table}
 
-Text
+\subsection{Eliminate transpose operations}
+We noticed that after each Least Squares method, the transpose of the target matrix is obtained. The transpose operation of the matrix needs to be performed(line 7 and 12), while the transpose operation is quite complicated and will occupy more computing resources.
+As the operation after transpose of the matrix is multiplication of diagonal matrices and there is a parameter to control the transpose of the input matrices in the CUDA api $cublas<t>gemmStridedBatchd$, we set the parameter to perform the transpose implicitly.
 
-Text
+\subsection{Least Squares Minimization}
+As shown in \ref{procedure:cpu}, LSM (Least Squares Minimization) is the main step of the tensor sensing algorithm, which is the most time-consuming part of the entire algorithm. There are many approaches for least squares minimization. QR factorization is one of the most efficient approaches, which is well supported by CUDA.
+The least squares problem can be formulated as:
+\[
+\widetilde{\mathbf{x}} = \mathop{\arg \min}_{\mathbf{x}} \| \mathbf{b} - \mathbf{A} \mathbf{x} \|^2_F,
+\]
+where $\mathbf{A}$ is a matrix of size $m \times n$, $\mathbf{x}$ is a vector
+of size $k \times 1$, and $\mathbf{b}$ is a vector of size $n \times 1$. In the tensor
+algorithm, the system we work on is an overdetermined system, where $n >
+ k$.
+ We perform QR factorization on $\mathbf{A}$ and get $\mathbf{A} = \mathbf{Q}\mathbf{R}$ , where $\mathbf{Q}$ is an
+ orthogonal matrix of size $n \times k $ and $\mathbf{R}$ is an upper triangular matrix of size $k \times k$. Taking advantage of the special nature of these matrices we obtain $\mathbf{x}$
+as following:
+\[
+\mathbf{x} = \mathbf{R}^{-1}\mathbf{Q}^{T} \ast \mathbf{b}.
+\]
+\subsection{Data reuse and reduce data exchange}
+The two main operations in the loop are completed on the device side. Frequent data exchange will seriously affect the efficiency of the program. We use data reuse strategy to reduce data exchange and reduce storage resources occupied on the device side as much as possible.
+In the whole loop, we only do two data exchanges. One is that the data is transferred from the CPU to the GPU at the beginning of the loop, and the final result matrix is sent back from the GPU to the CPU.
+All intermediate results are covered with new results.One noteworthy thing is that since we use QR decomposition to solve the least squares problem, the input vector y is covered by the result vector (U, V), so we need to re-assign the vector y each time we perform the least squares method. However, it is obviously too time-consuming to read the original data of the vector y from the CPU every time. In order to solve this problem, we pre-apply a dyL that stores the original data of the vector y. Every time we need to reassign the dy, we use the api. . In this way, since the device-to-device assignment is much faster than the data exchange from the CPU to the GPU, at the expense of a small amount of storage space (the space of the vector y is small compared to the data such as A). ) This is a very good acceleration we have achieved, which will show up in the experimental results in next section.
 
-%\begin{listing}[H]
-%\caption{Title of the listing}
-%\rule{\textwidth}{1pt}
-%\raggedright Text of the listing. In font size footnotesize, small, or normalsize. Preferred format: left aligned and single spaced. Preferred border format: top border line and bottom border line.
-%\rule{\textwidth}{1pt}
-%\end{listing}
+%is that lsm using qr should be mentioned?
 
+\begin{algorithm}
+\setstretch{2}
+\caption{Tensor Sensing on GPU}
+\begin{algorithmic}[1]
+    \Require data on CPU memory: randomly initialized $\mathbf{U}^0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
+    \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
+    \State apply for memory on GPU device: $dy, dA, dAt , dW, dyL$
+    \State data transfer: $\mathcal{A}, \mathcal{A}_t, \mathbf{y}, \mathbf{U}^0 \stackrel{cudaMemcpyHostToDevice}{\longrightarrow} dA(\mathcal{A}), dAt(\mathcal{A}_t), dy(\mathbf{U}^0), dyL(\mathbf{y})$ ($dA(\mathcal{A})$ means that the content in $dA$ is $\mathcal{A}$, the same below)
+    \For{$i=0 \to IterNum$}
+        \State $dW(\text{uninitialized}), dA(\mathcal{A}), dy(\mathbf{U}^i) \stackrel{cublas<t>gemmStridedBatchd}{\longrightarrow} dW(\mathcal{A}\, \text{diag}(\mathbf{U}^i)), dA(\mathcal{A}), dy(\mathbf{U}^i)$
+        \State  $dy(\mathbf{U}^i), dyL(\mathbf{y}) \stackrel{cudaMemcpyDeviceToDevice}{\longrightarrow} dy(\mathbf{y}), dyL(\mathbf{y})$
+        \State $dW(\mathcal{A}\, \text{diag}(\mathbf{U}^i)), dy(\mathbf{y}) \stackrel{cusolver<t>qr}{\longrightarrow} dy(\mathbf{V}), dW(\text{uninitialized})$
+        \State $dW(\text{uninitialized}, dAt(\mathcal{A}_t), dy(\mathbf{V}^i)) \stackrel{cublas<t>gemmStridedBatchd}{\longrightarrow} dW(\mathcal{A}_t\, \text{diag}(\mathbf{V}^i)), dAt(\mathcal{A}_t), dy(\mathbf{V}^i)$
+        \State  $dy(\mathbf{V}^i), dyL(\mathbf{y}) \stackrel{cudaMemcpyDeviceToDevice}{\longrightarrow} dy(\mathbf{y}), dyL(\mathbf{y})$
+        \State $dW(\mathcal{A}_t\, \text{diag}(\mathbf{V}^i)), dy(\mathbf{y}) \stackrel{cusolver<t>qr}{\longrightarrow} dy(\mathbf{U}^i), dW(\text{uninitialized})$
+    \EndFor
+    \State \Return $\mathbf{X}^s = \mathbf{U}\mathbf{V}$
+\end{algorithmic}
+\end{algorithm}
 
-\subsection{Formatting of Mathematical Components}
+\section{Experiment Methodology}
+In this section, we describe the experiment methodology including the hardware and software platform, testing data, testing process, and the comparison metrics.
 
-This is an example of an equation:
+\subsection{Hardware and Software Platform}
+We use an NVIDIA Tesla V100 GPU card to evaluate performance of the method we propose. Tesla V100 is powered by NVIDIA Volta architecvture, comes in 32GB configuration. It is intalled on a server with 128 GB memory and two Intel i7-7820x CPUs clocked at 3.6 GHz. The server is running Ubuntu 18.04.1 LTS with the kernel version 4.15.0. There is a Matlab R2017b installed that executs the CPU implementation in previous work [ref] as the basline for comparison with our method. NVIDIA CUDA 10.0 [ref] is used in all experiments of our method execution.
+\subsection{Testing Data}
+In the experiment, we use both synthetic and real datasets to test our method. The synthetic data is generated according to the compressed sensing [ref4]. For real dataset, we use a IKEA 3D dataset that generate a ground truth tensor of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1.
 
-\begin{equation}
-a + b = c
-\end{equation}
-%% If the documentclass option "submit" is chosen, please insert a blank line before and after any math environment (equation and eqnarray environments). This ensures correct linenumbering. The blank line should be removed when the documentclass option is changed to "accept" because the text following an equation should not be a new paragraph. 
+\subsection{Testing Process}
+The synthetic and real datasets are processed by the Matlab code on CPUs and our method on GPUs, respectively. We repeat each experiment five times and report the average results.
 
-Please punctuate equations as regular text. Theorem-type environments (including propositions, lemmas, corollaries etc.) can be formatted as follows:
-%% Example of a theorem:
-\begin{Theorem}
-Example text of a theorem.
-\end{Theorem}
+\subsection{Comparison Metrics}
+We compare the CPU algorithm with the GPU algorithm in three metrics: running time, relative error rate.
+\begin{itemize}
+    \item \textit{running time:} varying the tensor size and fixing other parameter, we measure the execution time of original Matlab method, our method without data reuse strategy and our final accelerated method. Finally we caculate speedups as the Matlab time divided by our method on GPU time.
+    \item \textit{error rate:} we adopt the metric relative square error, defined as $ RSE = \| \widehat{\mathcal{X}} - \mathcal{X} \|_F / \|\mathcal{X} \|_F $.
+\end{itemize}
 
-The text continues here. Proofs must be formatted as follows:
+\section{Results and Analysis}
+\subsection{Running time of Synthetic Data}
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=3.5in]{runtime.pdf}
+    \caption{Running time of Matlab implemention and CUDA implementations}
+    \label{pic:runtime}
+\end{figure}
 
-%% Example of a proof:
-\begin{proof}[Proof of Theorem 1]
-Text of the proof. Note that the phrase `of Theorem 1' is optional if it is clear which theorem is being referred to.
-\end{proof}
-The text continues here.
+\begin{table}[t]
+  \renewcommand{\arraystretch}{1.3}
+  \centering
+  \scriptsize
+  \caption{Running time under different tensor size ($n \times n \times 6$).}
+  \begin{tabular}{|l|l|l|l|l|l|}
+    \hline
+    \textbf{\textbf{n}} & \textbf{40}& \textbf{60}& \textbf{80} & \textbf{100} & \textbf{120}\\
+    \hline
+    Matlab time(S) & 3.07 & 13.65 & 50.43 & 118.84 & 251.54\\
+    \hline
+    CUDA without reuse data time(S) & 9.50 & 11.40 & 12.15 & 20.70 & 25.74\\
+    \hline
+    CUDA with reuse data time(S) & 0.44 & 0.63 & 0.98 & 2.01 & 2.97\\
+    \hline
+    Speedups & 6.98 & 21.67 & 51.46 & 59.12 & 84.70\\
+    \hline
+  \end{tabular}
+  \label{tbl_runtime}
+\end{table}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Discussion}
+Fig.\ref{pic:runtime} shows that the running time of the two CUDA implementations and the Matlab implementation for $\mathcal{X}$ of size $n\times n \times 6$ of $\mathcal{L}$-rank 1, where $n$ varies from 40 to 120 at a step of 20. The sampling rate is set to 20\%, and both CPU and GPU algorithms iterate 5 itrations for completion. The detailed time value is listed in \ref{tbl_runtime}. 
+While $M = N_1 \times N_2 \times N_3 \times \text{sampling rate}$ and $\mathcal{A} \in \mathbb{R}^{M \times N_1N_2N_3}$, the scale of the main operation matrix $\mathcal{A}$ increases at a rate four times the rate of increase of $n$. 
+It can be seen that the run time of the Matlab method without any parallel strategy is polynomial with the increase of n, and both CUDA implementations are linearly changed. As for CUDA implementation without data reuse, when the matrix size is small, the data exchange takes up most of the running time and the running time is even longer than the Matlab implementation. 
+As for our final method, which is with data reuse and other parallel acceleration strategy, it achieves a good speedup at all scales and allows for greater speedups in larger data sizes where GPU memory is allowed.
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=3.5in]{speedup.pdf}
+    \caption{Speedups of Matlab implemention and CUDA implementation}
+    \label{pic:runtime}
+\end{figure}
 
-Authors should discuss the results and how they can be interpreted in perspective of previous studies and of the working hypotheses. The findings and their implications should be discussed in the broadest context possible. Future research directions may also be highlighted.
+\subsection{Error Rate of Real Data}
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=3.5in]{rse.pdf}
+    \caption{RSE of Matlab implemention and CUDA implementation}
+    \label{pic:rse}
+\end{figure}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Materials and Methods}
+This experiment compares the error rate if the Matlab and CUDA implementation under different iterations for $\mathcal{X}$ of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1. The sampling rate is set to 50\%.As shown in Fig. \ref{pic:rse}, when iteration varies from 1 to 30, the RSEs drop significantly. More importantly, the origin Matlab implementation and the CUDA implementation achieve almost the same RSEs at all iterations (the two curves in Fig. \ref{pic:rse} overlap), which means that the two implementations have similar error rate performance in tensor sensing.
 
-Materials and Methods should be described with sufficient details to allow others to replicate and build on published results. Please note that publication of your manuscript implicates that you must make all materials, data, computer code, and protocols associated with the publication available to readers. Please disclose at the submission stage any restrictions on the availability of materials or information. New methods and protocols should be described in detail while well-established methods can be briefly described and appropriately cited.
-
-Research manuscripts reporting large datasets that are deposited in a publicly available database should specify where the data have been deposited and provide the relevant accession numbers. If the accession numbers have not yet been obtained at the time of submission, please state that they will be provided during review. They must be provided prior to publication.
-
-Interventionary studies involving animals or humans, and other studies require ethical approval must list the authority that provided approval and the corresponding ethical approval code. 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
 
 This section is not mandatory, but can be added to the manuscript if the discussion is unusually long or complex.
