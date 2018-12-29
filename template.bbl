@@ -1,0 +1,110 @@
+\begin{thebibliography}{-------}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[Kanso and Rabbat(2009)]{kanso2009compressed}
+Kanso, M.A.; Rabbat, M.G.
+\newblock Compressed RF tomography for wireless sensor networks: Centralized
+  and decentralized approaches.
+\newblock  International Conference on Distributed Computing in Sensor Systems.
+  Springer,  2009, pp. 173--186.
+
+\bibitem[Mostofi(2011)]{mostofi2011compressive}
+Mostofi, Y.
+\newblock Compressive cooperative sensing and mapping in mobile networks.
+\newblock {\em IEEE Transactions on Mobile Computing} {\bf 2011}, {\em
+  10},~1769--1784.
+
+\bibitem[Matsuda \em{et~al.}(2017)Matsuda, Yokota, Takemoto, Hara, Ono,
+  Takizawa, and Miura]{matsuda2017multi}
+Matsuda, T.; Yokota, K.; Takemoto, K.; Hara, S.; Ono, F.; Takizawa, K.; Miura,
+  R.
+\newblock Multi-dimensional wireless tomography using tensor-based compressed
+  sensing.
+\newblock {\em Wireless Personal Communications} {\bf 2017}, {\em
+  96},~3361--3384.
+
+\bibitem[Li \em{et~al.}(2013)Li, Schonfeld, and Friedland]{li2013generalized}
+Li, Q.; Schonfeld, D.; Friedland, S.
+\newblock Generalized tensor compressive sensing.
+\newblock  Multimedia and Expo (ICME), 2013 IEEE International Conference on.
+  IEEE,  2013, pp. 1--6.
+
+\bibitem[Liu and Wang(2017)]{liu2017fourth}
+Liu, X.Y.; Wang, X.
+\newblock Fourth-order tensors with multidimensional discrete transforms.
+\newblock {\em arXiv preprint arXiv:1705.01576} {\bf 2017}.
+
+\bibitem[Jing \em{et~al.}(2016)Jing, Jiang, Zhang, Li, Fan, and
+  Liang]{jing2016energy}
+Jing, N.; Jiang, L.; Zhang, T.; Li, C.; Fan, F.; Liang, X.
+\newblock Energy-efficient eDRAM-based on-chip storage architecture for GPGPUs.
+\newblock {\em IEEE Transactions on Computers} {\bf 2016}, {\em 65},~122--135.
+
+\bibitem[Zhang \em{et~al.}(2015{\natexlab{a}})Zhang, Jing, Jiang, Shu, Wu, and
+  Liang]{zhang2015buddy}
+Zhang, T.; Jing, N.; Jiang, K.; Shu, W.; Wu, M.Y.; Liang, X.
+\newblock Buddy SM: Sharing Pipeline Front-End for Improved Energy Efficiency
+  in GPGPUs.
+\newblock {\em ACM Transactions on Architecture and Code Optimization (TACO)}
+  {\bf 2015}, {\em 12},~1--23.
+
+\bibitem[Zhang \em{et~al.}(2015{\natexlab{b}})Zhang, Zhang, Shu, Wu, and
+  Liang]{zhang2015efficient}
+Zhang, T.; Zhang, J.; Shu, W.; Wu, M.Y.; Liang, X.
+\newblock Efficient graph computation on hybrid CPU and GPU systems.
+\newblock {\em The Journal of Supercomputing} {\bf 2015}, {\em 71},~1563--1586.
+
+\bibitem[Zhang \em{et~al.}(2014)Zhang, Shu, and Wu]{zhang2014cuirre}
+Zhang, T.; Shu, W.; Wu, M.Y.
+\newblock CUIRRE: An open-source library for load balancing and characterizing
+  irregular applications on GPUs.
+\newblock {\em Journal of parallel and distributed computing} {\bf 2014}, {\em
+  74},~2951--2966.
+
+\bibitem[Zhang \em{et~al.}(2016)Zhang, Tong, Shen, Peng, and
+  Niu]{zhang2016efficient}
+Zhang, T.; Tong, W.; Shen, W.; Peng, J.; Niu, Z.
+\newblock Efficient Graph Mining on Heterogeneous Platforms in the Cloud. In
+  {\em Cloud Computing, Security, Privacy in New Computing Environments};
+  Springer,  2016; pp. 12--21.
+
+\bibitem[Chetlur \em{et~al.}(2014)Chetlur, Woolley, Vandermersch, Cohen, Tran,
+  Catanzaro, and Shelhamer]{chetlur2014cudnn}
+Chetlur, S.; Woolley, C.; Vandermersch, P.; Cohen, J.; Tran, J.; Catanzaro, B.;
+  Shelhamer, E.
+\newblock {cuDNN}: {Efficient} primitives for deep learning.
+\newblock {\em arXiv preprint arXiv:1410.0759} {\bf 2014}, pp. 1--9.
+
+\bibitem[Tsung \em{et~al.}(2016)Tsung, Tsai, Pai, Lai, and Lu]{tsung2016high}
+Tsung, P.K.; Tsai, S.F.; Pai, A.; Lai, S.J.; Lu, C.
+\newblock High performance deep neural network on low cost mobile GPU.
+\newblock  Consumer Electronics (ICCE), 2016 IEEE International Conference on.
+  IEEE,  2016, pp. 69--70.
+
+\bibitem[Banasiak(2016)]{banasiak2016statistical}
+Banasiak, D.
+\newblock Statistical Methods of Natural Language Processing on GPU. In {\em
+  Man--Machine Interactions 4}; Springer,  2016; pp. 595--604.
+
+\bibitem[Shi \em{et~al.}(2016)Shi, Niranjan, Anandkumar, and
+  Cecka]{shi2016tensor}
+Shi, Y.; Niranjan, U.; Anandkumar, A.; Cecka, C.
+\newblock Tensor contractions with extended BLAS kernels on CPU and GPU.
+\newblock  High Performance Computing (HiPC), 2016 IEEE 23rd International
+  Conference on. IEEE,  2016, pp. 193--202.
+
+\bibitem[Li \em{et~al.}(2016)Li, Ma, Yan, and Vuduc]{li2016optimizing}
+Li, J.; Ma, Y.; Yan, C.; Vuduc, R.
+\newblock Optimizing sparse tensor times matrix on multi-core and many-core
+  architectures.
+\newblock  Irregular Applications: Architecture and Algorithms (IA3), Workshop
+  on. IEEE,  2016, pp. 26--33.
+
+\bibitem[Dongarra \em{et~al.}(2017)Dongarra, Hammarling, Higham, Relton, and
+  Zounon]{dongarra2017optimized}
+Dongarra, J.; Hammarling, S.; Higham, N.J.; Relton, S.D.; Zounon, M.
+\newblock Optimized Batched Linear Algebra for Modern Architectures.
+\newblock  European Conference on Parallel Processing. Springer,  2017, pp.
+  511--522.
+
+\end{thebibliography}

@@ -1,0 +1,52 @@
+This is BibTeX, Version 0.99d (TeX Live 2018)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: template.aux
+The style file: Definitions/mdpi.bst
+Illegal, another \bibstyle command---line 20 of file template.aux
+ : \bibstyle
+ :          {plain}
+I'm skipping whatever remains of this command
+Database file #1: mybibfile.bib
+Warning--I didn't find a database entry for ""
+You've used 16 entries,
+            2865 wiz_defined-function locations,
+            654 strings with 7317 characters,
+and the built_in function-call counts, 7643 in all, are:
+= -- 688
+> -- 440
+< -- 13
++ -- 165
+- -- 132
+* -- 630
+:= -- 1186
+add.period$ -- 54
+call.type$ -- 16
+change.case$ -- 16
+chr.to.int$ -- 15
+cite$ -- 16
+duplicate$ -- 354
+empty$ -- 627
+format.name$ -- 152
+if$ -- 1675
+int.to.chr$ -- 2
+int.to.str$ -- 16
+missing$ -- 16
+newline$ -- 82
+num.names$ -- 48
+pop$ -- 130
+preamble$ -- 0
+purify$ -- 16
+quote$ -- 0
+skip$ -- 210
+stack$ -- 0
+substring$ -- 429
+swap$ -- 115
+text.length$ -- 9
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 112
+warning$ -- 0
+while$ -- 71
+width$ -- 0
+write$ -- 208
+(There was 1 error message)

@@ -1,15 +1,13 @@
 \documentclass[journal,article,submit,moreauthors,pdftex,10pt,a4paper]{Definitions/mdpi} 
 \usepackage{algorithm}
 \usepackage{algorithmicx}
-\usepackage{algpseudocode}
-\floatname{algorithm}{procedure}
 \usepackage{amsmath}
+\usepackage{algpseudocode}
 \renewcommand{\algorithmicrequire}{\textbf{Input:}}  % Use Input in the format of Algorithm
 \renewcommand{\algorithmicensure}{\textbf{Output:}} % Use Output in the format of Algorithm
 \usepackage{amsthm}
 \usepackage{amsmath}
 \usepackage{enumitem}
-\usepackage{listings}
 \usepackage{color} %red, green, blue, yellow, cyan, magenta, black, white
 \definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
 \definecolor{mylilas}{RGB}{170,55,241}
@@ -168,52 +166,56 @@ The template details the sections that can be used in a manuscript. Note that th
 \section{Introduction}
 
 \section{Related Work}
-RF Tomographic imaging [1, 2] is an inference technique which can be used for remotely learning the locations and the shapes of objects.
-There have been considerable works on reconstruction methods for RF tomographic imaging which can be catego- rized into vector-based and tensor-based methods. In [1, 5], vector-based compressed sensing approaches for RF tomo-graphic imaging are proposed.These vector-based methods are designed to infer two-dimensional spaces, and they do not have the ability to estimate three-dimensional spaces since spatial structures of the data are inherently ignored. Refer- ence [4] proposes the tensor-based compressed sensing algo- rithm using tensor nuclear norm (TNN) [6], which extends the RF tomographic imaging problem to three-dimensional case.
+There are quite a lot of work on the reconstruction of RF tomography, which can be classified into vector-based and tensor-based methods.
+The vector-based RF tomography compression sensing methods are proposed in \cite{kanso2009compressed, mostofi2011compressive}. However, these methods can only infer two-dimensional space because they ignore the spatial structure of the data. 
+The tensor-based approach is proposed in \cite{matsuda2017multi}, which uses tensor nuclear norm(TNN) \cite{li2013generalized} to extend RF tomographic problems to three-dimensional case. The method requires tensor singular value decomposition(t-SVD) , which is high computational complexity. Furthermore, the recovery error of this method is relatively high and the size of the data that can be processed is too small for the actual scene.Reference \cite{}uses a transform-based tensor model\cite{liu2017fourth} to efficiently explore three-dimensional spatial structures for higher accuracy and efficiency. 
 
-Many existing researches \cite{jing2016energy} \cite{zhang2015buddy} \cite{zhang2015efficient} \cite{zhang2014cuirre} \cite{zhang2016efficient} have demonstrated the benefit of utilizing GPUs to accelerate general purpose computing. Because of the massive parallelism and high memory bandwidth, GPUs are often used in accelerating machine learning applications \cite{chetlur2014cudnn} \cite{cui2016geeps} \cite{tsung2016high} \cite{banasiak2016statistical}.  Recently it has been applied to accelerate tensor contractions \cite{shi2016tensor} and the proposed new BLAS-like primitive called STRIDEDBATCHEDGEMM is capable of performing a wide range of tensor contractions on CPU and GPU efficiently. Sparse tensor-times-dense matrix multiply is a critical bottleneck in data analysis and mining applications and \cite{li2016optimizing} proposed an efficient primitive on CPU and GPU platforms. Solving large numbers of small linear algebra problems simultaneously is becoming increasingly important in many application areas and \cite{dongarra2017optimized} made a systematic work to optimize batched linear algebra for GPUs.
+Many existing researches \cite{jing2016energy} \cite{zhang2015buddy} \cite{zhang2015efficient} \cite{zhang2014cuirre} \cite{zhang2016efficient} have demonstrated the benefit of utilizing GPUs to accelerate general purpose computing. Because of the massive parallelism and high memory bandwidth, GPUs are often used in accelerating machine learning applications \cite{chetlur2014cudnn} \cite{tsung2016high} \cite{banasiak2016statistical}.  Recently it has been applied to accelerate tensor contractions \cite{shi2016tensor} and the proposed new BLAS-like primitive called STRIDEDBATCHEDGEMM is capable of performing a wide range of tensor contractions on CPU and GPU efficiently. Sparse tensor-times-dense matrix multiply is a critical bottleneck in data analysis and mining applications and \cite{li2016optimizing} proposed an efficient primitive on CPU and GPU platforms. Solving large numbers of small linear algebra problems simultaneously is becoming increasingly important in many application areas and \cite{dongarra2017optimized} made a systematic work to optimize batched linear algebra for GPUs.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Background overview}
-
+\section{Notations and Tensor Sensing Problem}
     We first formulate the RF tomographic imaging task as a tensor sensing problem, then review the Alt-Min algorithm. 
 
-\subsection{Notations and Problem Formulation}
+\subsection{Notations and the Transform-based Tensor Model}
 We use lowercase boldface letter $\mathbf{x} \in \mathbb{R}^{N_1}$ to denote a vector, uppercase boldface letter $\mathbf{X} \in \mathbb{R}^{N_1 \times N_2}$ to denote a matrix, 
 and calligraphic letter $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ to denote a tensor. $[k]$ denotes the set $\{1,2,\dots, k\}$. Let $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ 
 denote a thirdorder tensor. $\mathcal{A}(:,j,k)$, $\mathcal{A}(i,:,k)$, $\mathcal{A}(i,j:)$ denote mode-1, mode-2, mode-3 tubes of $\mathcal{A}$, and $\mathcal{A}(:,:,k)$, $\mathcal{A}(:,j,:)$ $\mathcal{A}(i,:,:)$ 
 denote the frontal, lateral, and horizontal slices. The Frobenius norm of $\mathcal{A}$ is defined as $\|\mathcal{A}\|_F = \sqrt{\sum ^{N_1}_{i = 1} \sum ^{N_2}_{j = 1} \sum ^{N_3}_{k = 1} \mathcal{A}^2_{ijk}}$.
 The operator vec(.) transforms tensors and matrices into vectors. Let $\mathbf{X}^{T}$ and $\mathcal{A}^{\dagger}$ denote the transposes of a matrix and a tensor, respectively.
-\begin{defn}
+\begin{defn}\cite{liu2017fourth}
     Given an invertible discrete transform $\mathcal{L}:\mathbb{R}^{1\times 1 \times N_3} \to \mathbb{R}^{1\times 1\times N_3}$, the elementwise multiplication $\circ$, and $\mathbf{a}, \mathbf{b} \in \mathbb{R}^{1\times 1\times N_3}$ , the tubal-scalar multiplication is defined as:
-    \begin{center}
         \begin{equation}
             \mathbf{a} \bullet \mathbf{b} = \mathcal{L}^{-1}(\mathcal{L}(\mathbf{a})\circ \mathcal{L}(\mathbf{b}))
         \end{equation}
-    \end{center}
 \end{defn}
 
-\begin{defn}
+\begin{defn}\cite{liu2017fourth}
     The $\mathcal{L}$-product $\mathcal{A} = \mathcal{B} \bullet \mathcal{C}$ of $\mathcal{B} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{C} \in \mathbb{R}^{r\times \times N_2 \times N_3}$ is a tensor of size $N_1 \times N_2 \times N_3$, $\mathcal{A}(i,j,:) = \sum^r_{s=0}\mathcal{B}(i,s,:)\bullet \mathcal{C}(s,j,:)$, for $i \in [N_1]$ and $j \in [N_2]$.
 \end{defn}
 
-\begin{defn}
+\begin{defn}\cite{liu2017fourth}
     The transform domain singular value decomposition $\mathcal{L}$-SVD of $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ is given by $\mathcal{A} = \mathcal{U} \bullet \mathcal{S} \bullet \mathcal{V}^{\dagger}$, where $\mathcal{U}$ and $\mathcal{V}$ are $\mathcal{L}$-orthogonal tensors of size $N_1 \times N_1 \times N_3$ and $N_2 \times N_2 \times N_3$ respectively, and $\mathcal{S}$ is a diagonal tensor of size $N_1 \times N_2 \times N_3$. The entries of $\mathcal{S}$ are called the singular values of $\mathcal{A}$, and the number of non-zero ones is called the $\mathcal{L}$-rank of $\mathcal{A}$.
 \end{defn}
+\section{Tensor Sensing Problem}
 
-We stack the RF signal measurements $\mathbf{y}_m$ into a measurement vector $\mathbf{y} \in \mathbb{R}^M$. Given linear measurements $\mathbf{y}_m = \langle \mathcal{X}, \mathcal{A} \rangle = (\text{vec}(\mathcal{A}))^T \cdot \text{vec}(\mathcal{X})$, $1 \leq m \leq M$ of a loss field tensor $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ with $\mathcal{L}$-rank $r$ and the sensing tensors $\mathcal{A}_m \in \mathbb{R}^{N_1 \times N_2 \times N_3}$. With a linear map $\mathcal{H}(\cdot):\mathbb{R}^{N_1 \times N_2 \times N_3} \to \mathbb{R}^M$. We get:
+The loss field tensor$\mathcal{X} \in \mathbb{X}^{N_1 \times N_2 \times N_3}$ with $\mathcal{L}$-rank $r$ is what we want to reconstruct. We do the RF signal measurement $M$ times, let $\mathbf{y}_m$ denote the value of $m$-th RF signal measurement and the sensing tensors is denoted by $\mathcal{A}_m \in \mathbb{R}^{N_1 \times N_2 \times N_3}$. So we have:
+\begin{equation}
+    \mathbf{y} = \sum\limits_{{n_1,n_2,n_3}}\mathcal{A}_m(n_1,n_2,n_3)\mathcal{X}(n_1, n_2, n_3)+w,
+\end{equation}
+where $w$ is the noise.
+With a linear map $\mathcal{H}(\cdot):\mathbb{R}^{N_1 \times N_2 \times N_3} \to \mathbb{R}^M$\cite{jain2013low} and the vector $\mathbf{y} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ made by $M$ RF signal measurements $\mathbf{y}_m$\cite{kong2014data}. We get:
 \begin{equation}
     \mathbf{y} = \mathcal{H}(\mathcal{X}) + \mathbf{w},
 \end{equation}
 where $\mathbf{w}$ denotes the noise vector. 
-
-The goal of RF tomographic imaging is to recover the loss field tensor $\mathcal{X}$ from the measurement vector $\mathbf{y}$. We formulate this problem as a low $\mathcal{L}$-rank tensor sensing problem:
+We formulate this problem as a low $\mathcal{L}$-rank tensor sensing problem:
 \begin{equation}
     \label{eqa:lstm}
     \widehat{\mathcal{X}} = \mathop{\arg\min}_{\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}}  \| \mathbf{y} - \mathcal{H}(\mathcal{X}) \|_F^2 , \\ 
     \text{s.t.} \text{rank}(\mathcal{X}) \leq r .
 \end{equation}
 
-\subsection{The Alt-min Algorithm}
+\subsection{Solving the Tensor Sensing Problem with the Alt-min Algorithm}
 \begin{algorithm}[htb]
 \setstretch{2}
     \caption{Alt-min: AM($\mathcal{H}(\cdot), \mathbf{y}, r, L$)}
@@ -243,17 +245,15 @@ The goal of RF tomographic imaging is to recover the loss field tensor $\mathcal
     \Ensure tensor $\mathcal{V}$
     \end{algorithmic}
 \end{algorithm}
-To enable alternating minimization, we represent the loss field tensor as the $\mathcal{L}$-product of two smaller tensors, i.e., $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{X} \in \mathbb{R}^{r \times N_2 \times N_3}$.
-Then we reformulate equation \eqref{eqa:lstm} as the following non-convex optimization problem:
+Alg.\ref{alg:AM} shows how alternating minimization algorithm works on the tensor sensing problem. We represent the target tensor as the $\mathcal{L}$-product of two smaller tensors, i.e., $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{X} \in \mathbb{R}^{r \times N_2 \times N_3}$.
+Then we reformulate equation \eqref{eqa:lstm} as following:
 \begin{equation}
     \widehat{\mathcal{X}} =
     \mathop{\arg\min}_{ \mathcal{U} \in \mathbb{R}^{N_1 \times r \times N_3}, \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , \\
 \end{equation}
+The key step is least squares(LS) minimization(Alg. \ref{alg:LS}). The detailed implementation of LS minimization are given below.
 
-The main idea if Alt-min is to iteratetively estimate two low $\mathcal{L}$-rank tensors $\mathcal{U}$ and $\mathcal{V}$, each of $\mathcal{L}$ rank $r$. The key step is least 
-squares(LS) minimization. The detailed implemention of LS minimization are given below.
-
-We use the operater circ($\cdot$) to map circulants to their corresponding circular matrices which are tagged with the superscript $c$, i.e. $\underline{\alpha}^c, \underline{\mathbf{A}}^c$:
+We use the circulant algebra\cite{liu2016low, gleich2013power} to perform the $\mathcal{L}$-product. The operator circ($\cdot$) denotes mapping circulants to their corresponding circular matrices which are tagged with the superscript $c$, i.e. $\underline{\alpha}^c, \underline{\mathbf{A}}^c$:
 \[
     \underline{\alpha}^c = \text{circ}(\underline{\alpha}) = \begin{bmatrix}
         \alpha_1 & \alpha_{N_3} & \cdots  & \alpha_2 \\
@@ -261,28 +261,28 @@ We use the operater circ($\cdot$) to map circulants to their corresponding circu
         \vdots & \vdots & \vdots & \alpha_{N_3} \\
         \alpha_{N_3} & \alpha_{N_3-1} & \cdots & \alpha_1
     \end{bmatrix}
-    \]
+    \],
     \[
         \underline{\mathbf{A}}^c = \text{circ}(\underline{\mathbf{A}}) = \begin{bmatrix}
             \text{circ}(\underline{\mathbf{A}_{1,1}})  & \cdots & \text{circ}(\underline{\mathbf{A}}_{1,N_2)}) \\
             \vdots & \vdots & \vdots \\
             \text{circ}(\underline{\mathbf{A}_{N_1,1}})  & \cdots & \text{circ}(\underline{\mathbf{A}}_{N_1,N_2)}) \\
         \end{bmatrix}
-        \]
+        \].
 
-For simplicity, we use $\mathcal{A}^c$ to represent the circular matrix of tensor $\mathcal{A}$.Then the $\mathcal{L}$-product $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$ has an equivalent matrix-product as:
+For simplicity, we use $\mathbf{A}^c$ to represent the circular matrix of tensor $\mathcal{A}$.Then the $\mathcal{L}$-product $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$ has an equivalent matrix-product as:
 \begin{equation}
     \mathbf{X}^c = \mathbf{U}^c\mathbf{V}^c,
 \end{equation}
 where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \mathbb{R}^{N_1N_3\times rN_3}$, $\mathbf{V}^c \in \mathbb{R}^{rN_3\times N_2N_3}$. We can transform the LS minimization in Alg.\ref{alg:LS} to the corresponding circular matrix representation:
 \begin{equation}
     \widehat{\mathbf{V}}^c = 
-    \mathop{\arg\min}_{ \mathbf{V}^c \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 , \\
+    \mathop{\arg\min}_{ \mathbf{V}^c \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^c(\mathbf{U}^c\mathbf{V}^c) \|_F^2 , \\
 \end{equation}
 where $\mathcal{H}^c(\cdot): \mathbb{R}^{N_1N_2 \times N_2N_3} \to \mathbb{R}^M$ is the corresponding linear map inthe circular matrix representation, with $\mathbf{y} = \mathcal{H}^c(\mathbf{X}^c)$. Each sensing tensor $\mathcal{A}_m$ is transfomed into its circular matrix $\mathbf{A}^c_m \in \mathbb{R}^{N_1N3 \times N_2N_3}$, and $\mathbf{y}_m = \langle \mathbf{X}^c, \mathbf{A}^c_m \rangle$, $1 \leq m \leq M$. Similarly, we can estimate $\mathbf{U}^c$ in the follow way:
 \begin{equation}
     \widehat{\mathbf{U}}^c =
-    \mathop{\arg\min}_{ \mathbf{U} \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 . \\
+    \mathop{\arg\min}_{ \mathbf{U} \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^{cT}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 . \\
 \end{equation}
 
 We perform the following steps to solve this non-convex optimization problem:
@@ -319,31 +319,6 @@ We perform the following steps to solve this non-convex optimization problem:
         \end{equation}
 
 \end{steps}
-
-\section{Algorithm implemention on GPU}
-\begin{algorithm}
-\setstretch{2}
-\caption{Tensor Sensing on CPU}
-\label{procedure:cpu}
-\begin{algorithmic}[1]
-    \Require randomly initialized $\mathbf{U}_0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
-    \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
-    \For{$i = 1 \to IterNum$} 
-        \State $\mathbf{U}_{d} = \text{diag}(\mathbf{U})$
-        \State $\mathbf{W} = \mathbf{A} \mathbf{U}_{d}$
-        \State $\mathbf{V}_{v} = \mathbf{W} \backslash \mathbf{y}$
-        \State $\text{clear}(\mathbf{W})$
-        \State $\mathbf{V} = \text{Vec2Mat}(\mathbf{V}_{v})$
-        \State $\mathbf{V}_t = \text{transpose}(\mathbf{V})$
-        \State $\mathbf{V}_{t_{d}} = \text{diag}(\mathbf{V}_t)$
-        \State $\mathbf{W} = \mathbf{A}_t \mathbf{V}_{t_{d}}$
-        \State $\mathbf{U}_{v} = \mathbf{W} \backslash \mathbf{y}$
-        \State $\text{clear}(\mathbf{W})$
-        \State $\mathbf{U} = \text{transpose}(\text{Vec2Mat}(\mathbf{U}_{v}))$
-    \EndFor
-    \State \Return $\mathbf{X} = \mathbf{U} \mathbf{V}$
-    \end{algorithmic}
-    \end{algorithm}
 \subsection{Optimization of Alt-min}
 In circular algebra, it is obvious that the first column of $\underline{\alpha}^c$ already contains all the entries of itself, and there is no need to recover the redundant information.We only need to recover the first column of each circ($\underline{\mathbf{X}}_{i,j}$). We use the Matlab function squeeze($\cdot$)  to get a new definition:
 \[
@@ -372,9 +347,35 @@ Similarly, we can estimate $\mathbf{U}^c$ in the following way:
 \end{equation}
 
 %psuado code
-So we can get the pseudocode of the tensor sensing as following:
-\subsection{Data Struct}
-In procedure \ref{procedure:cpu}, after least squares minimization(line 4 and 10), we get vectorized matrices. For a matrix $\mathbf{A} \in \mathbb{R}^{m \times n}$, the corresponding vectorized $\mathbf{A}$ is $\mathbf{A}_v \in \mathbb{R}^{mn \times 1}$. And the vectorized matrices are converted back to the original matrices(line 5 and 11). In some scientific computing programming languages, such as Matlab, this conversion must be done with the appropriate conversion function.
+So we can get the pseudocode of the tensor sensing as Alg.\ref{list:pseudocode}.
+\begin{algorithm}
+\setstretch{2}
+\caption{Pseudocode of Tensor Sensing}
+\label{list:pseudocode}
+\begin{algorithmic}[1]
+    \Require randomly initialized $\mathbf{U}_0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
+    \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
+    \For{$i = 1 \to IterNum$} 
+        \State $\mathbf{U}_{d} = \text{diag}(\mathbf{U})$
+        \State $\mathbf{W} = \mathbf{A} \mathbf{U}_{d}$
+        \State $\mathbf{V}_{v} = \mathbf{W} \backslash \mathbf{y}$
+        \State $\text{clear}(\mathbf{W})$
+        \State $\mathbf{V} = \text{Vec2Mat}(\mathbf{V}_{v})$
+        \State $\mathbf{V}_t = \text{transpose}(\mathbf{V})$
+        \State $\mathbf{V}_{t_{d}} = \text{diag}(\mathbf{V}_t)$
+        \State $\mathbf{W} = \mathbf{A}_t \mathbf{V}_{t_{d}}$
+        \State $\mathbf{U}_{v} = \mathbf{W} \backslash \mathbf{y}$
+        \State $\text{clear}(\mathbf{W})$
+        \State $\mathbf{U} = \text{transpose}(\text{Vec2Mat}(\mathbf{U}_{v}))$
+    \EndFor
+    \State \Return $\mathbf{X} = \mathbf{U} \mathbf{V}$
+    \end{algorithmic}
+    \end{algorithm}
+
+\section{Algorithm Implementation and Optimization on GPU}
+\subsection{Algorithm Implementation on GPU}
+\subsubsection{Data Struct}
+In Alg.\ref{list:pseudocode}, after least squares minimization(line 4 and 10), we get vectorized matrices. For a matrix $\mathbf{A} \in \mathbb{R}^{m \times n}$, the corresponding vectorized $\mathbf{A}$ is $\mathbf{A}_v \in \mathbb{R}^{mn \times 1}$. And the vectorized matrices are converted back to the original matrices(line 5 and 11). In some scientific computing programming languages, such as Matlab, this conversion must be done with the appropriate conversion function.
 We adopt the column-first storage format to store matrices and vectors, which not only ensures read and write continuity but also avoids explicit vector-to-matrix conversions that occur in original Matlab code because in this format $\mathbf{A}_v$ and $\mathbf{A}$ are the same in memory.
 \begin{figure}[H]
 \centering
@@ -382,8 +383,25 @@ We adopt the column-first storage format to store matrices and vectors, which no
 \caption{$\mathbf{A}$ and vec($\mathbf{A}$) in memory}
 \label{Fig:vec2mat}
 \end{figure}
+\subsubsection{Least Squares Minimization}
+As shown in Listing\ref{list:pseudocode}, LSM(Least Squares Minimization) is the main step of the tensor sensing algorithm, which is the most time-consuming part of the entire algorithm. There are many approaches for least squares minimization. QR factorization is one of the most efficient approaches, which is well supported by CUDA.
+The least squares problem can be formulated as:
+\begin{equation}
+\widetilde{\mathbf{x}} = \mathop{\arg \min}_{\mathbf{x}} \| \mathbf{b} - \mathbf{A} \mathbf{x} \|^2_F,
+\end{equation}
+where $\mathbf{A}$ is a matrix of size $m \times n$, $\mathbf{x}$ is a vector
+of size $k \times 1$, and $\mathbf{b}$ is a vector of size $n \times 1$. In the tensor
+algorithm, the system we work on is an overdetermined system, where $n >
+ k$.
+ We perform QR factorization on $\mathbf{A}$ and get $\mathbf{A} = \mathbf{Q}\mathbf{R}$ , where $\mathbf{Q}$ is an
+ orthogonal matrix of size $n \times k $ and $\mathbf{R}$ is an upper triangular matrix of size $k \times k$. Taking advantage of the special nature of these matrices we obtain $\mathbf{x}$
+as following:
+\begin{equation}
+\mathbf{x} = \mathbf{R}^{-1}\mathbf{Q}^{T} \ast \mathbf{b}.
+\end{equation}
 
-\subsection{Multiply of Block Diagonal Matrices}
+\subsection{Algorithm Optimization on GPU}
+\subsubsection{Multiply of Block Diagonal Matrices}
 Using the operational properties of the block matrix we get:
 \begin{equation}
         [\mathbf{A}_1, \mathbf{A}_2, \cdots, \mathbf{A}_{N_2}]
@@ -434,41 +452,27 @@ batchNum & number of $gemm$ to perform in the batch & $N_2$ \\
 \end{tabular}
 \end{table}
 
-\subsection{Eliminate transpose operations}
+\subsubsection{Eliminate transpose operations}
 We noticed that after each Least Squares method, the transpose of the target matrix is obtained. The transpose operation of the matrix needs to be performed(line 7 and 12), while the transpose operation is quite complicated and will occupy more computing resources.
 As the operation after transpose of the matrix is multiplication of diagonal matrices and there is a parameter to control the transpose of the input matrices in the CUDA api $cublas<t>gemmStridedBatchd$, we set the parameter to perform the transpose implicitly.
 
-\subsection{Least Squares Minimization}
-As shown in \ref{procedure:cpu}, LSM (Least Squares Minimization) is the main step of the tensor sensing algorithm, which is the most time-consuming part of the entire algorithm. There are many approaches for least squares minimization. QR factorization is one of the most efficient approaches, which is well supported by CUDA.
-The least squares problem can be formulated as:
-\[
-\widetilde{\mathbf{x}} = \mathop{\arg \min}_{\mathbf{x}} \| \mathbf{b} - \mathbf{A} \mathbf{x} \|^2_F,
-\]
-where $\mathbf{A}$ is a matrix of size $m \times n$, $\mathbf{x}$ is a vector
-of size $k \times 1$, and $\mathbf{b}$ is a vector of size $n \times 1$. In the tensor
-algorithm, the system we work on is an overdetermined system, where $n >
- k$.
- We perform QR factorization on $\mathbf{A}$ and get $\mathbf{A} = \mathbf{Q}\mathbf{R}$ , where $\mathbf{Q}$ is an
- orthogonal matrix of size $n \times k $ and $\mathbf{R}$ is an upper triangular matrix of size $k \times k$. Taking advantage of the special nature of these matrices we obtain $\mathbf{x}$
-as following:
-\[
-\mathbf{x} = \mathbf{R}^{-1}\mathbf{Q}^{T} \ast \mathbf{b}.
-\]
 \subsection{Data reuse and reduce data exchange}
 The two main operations in the loop are completed on the device side. Frequent data exchange will seriously affect the efficiency of the program. We use data reuse strategy to reduce data exchange and reduce storage resources occupied on the device side as much as possible.
 In the whole loop, we only do two data exchanges. One is that the data is transferred from the CPU to the GPU at the beginning of the loop, and the final result matrix is sent back from the GPU to the CPU.
-All intermediate results are covered with new results.One noteworthy thing is that since we use QR decomposition to solve the least squares problem, the input vector y is covered by the result vector (U, V), so we need to re-assign the vector y each time we perform the least squares method. However, it is obviously too time-consuming to read the original data of the vector y from the CPU every time. In order to solve this problem, we pre-apply a dyL that stores the original data of the vector y. Every time we need to reassign the dy, we use the api. . In this way, since the device-to-device assignment is much faster than the data exchange from the CPU to the GPU, at the expense of a small amount of storage space (the space of the vector y is small compared to the data such as A). ) This is a very good acceleration we have achieved, which will show up in the experimental results in next section.
+All intermediate results are covered with new results.One noteworthy thing is that since we use QR decomposition to solve the least squares problem, the input vector $\mathbf{y}$ is covered by the result vector (vec($\mathbf{U}$), vec($\mathbf{V}$)), so we need to reassign the vector $\mathbf{y}$ each time we perform the least squares method. However, it is obviously too time-consuming to read the original data of the vector $\mathbf{y}$ from the CPU every time. In order to solve this problem, we pre-apply a $dyL$ that stores the original data of the vector $\mathbf{y}$. Every time we need to reassign the $dy$, we use the api $cudaMemcpyDeviceToDevice$ . In this way, since the device-to-device assignment is much faster than the data exchange from the CPU to the GPU, at the expense of a small amount of storage space (the space of the vector $\mathbf{y}$ is small compared to the data such as $\mathbf{A}$). ) This is a very good acceleration we have achieved, which will show up in the experimental results in next section.
+Alg.\ref{alg:GPU} shows the main CUDA api we adopt and the changes in the memory during the running of the algorithm.
 
 %is that lsm using qr should be mentioned?
 
 \begin{algorithm}
 \setstretch{2}
 \caption{Tensor Sensing on GPU}
+\label{alg:GPU}
 \begin{algorithmic}[1]
     \Require data on CPU memory: randomly initialized $\mathbf{U}^0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
     \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
-    \State apply for memory on GPU device: $dy, dA, dAt , dW, dyL$
-    \State data transfer: $\mathcal{A}, \mathcal{A}_t, \mathbf{y}, \mathbf{U}^0 \stackrel{cudaMemcpyHostToDevice}{\longrightarrow} dA(\mathcal{A}), dAt(\mathcal{A}_t), dy(\mathbf{U}^0), dyL(\mathbf{y})$ ($dA(\mathcal{A})$ means that the content in $dA$ is $\mathcal{A}$, the same below)
+    \State apply for memory on GPU device: $dy, dA, dAt , dW, dyL$ ($dA(\mathcal{A})$ means that the content in $dA$ is $\mathcal{A}$, the same below)
+    \State data transfer: $\mathcal{A}, \mathcal{A}_t, \mathbf{y}, \mathbf{U}^0 \stackrel{cudaMemcpyHostToDevice}{\longrightarrow} dA(\mathcal{A}), dAt(\mathcal{A}_t), dy(\mathbf{U}^0), dyL(\mathbf{y})$ 
     \For{$i=0 \to IterNum$}
         \State $dW(\text{uninitialized}), dA(\mathcal{A}), dy(\mathbf{U}^i) \stackrel{cublas<t>gemmStridedBatchd}{\longrightarrow} dW(\mathcal{A}\, \text{diag}(\mathbf{U}^i)), dA(\mathcal{A}), dy(\mathbf{U}^i)$
         \State  $dy(\mathbf{U}^i), dyL(\mathbf{y}) \stackrel{cudaMemcpyDeviceToDevice}{\longrightarrow} dy(\mathbf{y}), dyL(\mathbf{y})$
@@ -485,17 +489,17 @@ All intermediate results are covered with new results.One noteworthy thing is th
 In this section, we describe the experiment methodology including the hardware and software platform, testing data, testing process, and the comparison metrics.
 
 \subsection{Hardware and Software Platform}
-We use an NVIDIA Tesla V100 GPU card to evaluate performance of the method we propose. Tesla V100 is powered by NVIDIA Volta architecvture, comes in 32GB configuration. It is intalled on a server with 128 GB memory and two Intel i7-7820x CPUs clocked at 3.6 GHz. The server is running Ubuntu 18.04.1 LTS with the kernel version 4.15.0. There is a Matlab R2017b installed that executs the CPU implementation in previous work [ref] as the basline for comparison with our method. NVIDIA CUDA 10.0 [ref] is used in all experiments of our method execution.
+We use an NVIDIA Tesla V100 GPU card to evaluate performance of the method we propose. Tesla V100 is powered by NVIDIA Volta architecvture, comes in 32GB configuration. It is intalled on a server with 128 GB memory and an Intel i7-7820x CPU clocked at 3.6 GHz containing, which contains eight cores and supports 16 hardware threads with hyperthreading. The server is running Ubuntu 18.04.1 LTS with the kernel version 4.15.0. There is a Matlab R2017b installed that executes the CPU implementation in previous work as the baseline for comparison with our method. NVIDIA CUDA 10.0 is used in all experiments of our method execution.
 \subsection{Testing Data}
-In the experiment, we use both synthetic and real datasets to test our method. The synthetic data is generated according to the compressed sensing [ref4]. For real dataset, we use a IKEA 3D dataset that generate a ground truth tensor of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1.
+In the experiment, we use both synthetic and real datasets to test our method. The synthetic data is generated according to the compressed sensing\cite{matsuda2017multi}. For real dataset, we use a IKEA 3D dataset that generate a ground truth tensor of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1.
 
 \subsection{Testing Process}
 The synthetic and real datasets are processed by the Matlab code on CPUs and our method on GPUs, respectively. We repeat each experiment five times and report the average results.
 
 \subsection{Comparison Metrics}
-We compare the CPU algorithm with the GPU algorithm in three metrics: running time, relative error rate.
+We compare the CPU algorithm with the GPU algorithm in two metrics: running time, relative error rate.
 \begin{itemize}
-    \item \textit{running time:} varying the tensor size and fixing other parameter, we measure the execution time of original Matlab method, our method without data reuse strategy and our final accelerated method. Finally we caculate speedups as the Matlab time divided by our method on GPU time.
+    \item \textit{running time:} varying the tensor size and fixing other parameter, we measure the execution time of original CPU method, GPU implementation without optimization and our final accelerated method. Finally we calculate speedups as the CPU time divided by our method on GPU time.
     \item \textit{error rate:} we adopt the metric relative square error, defined as $ RSE = \| \widehat{\mathcal{X}} - \mathcal{X} \|_F / \|\mathcal{X} \|_F $.
 \end{itemize}
 
@@ -504,7 +508,7 @@ We compare the CPU algorithm with the GPU algorithm in three metrics: running ti
 \begin{figure}[t]
     \centering
     \includegraphics[width=3.5in]{runtime.pdf}
-    \caption{Running time of Matlab implemention and CUDA implementations}
+    \caption{Running time of CPU algorithm and GPU algorithm}
     \label{pic:runtime}
 \end{figure}
 
@@ -517,11 +521,11 @@ We compare the CPU algorithm with the GPU algorithm in three metrics: running ti
     \hline
     \textbf{\textbf{n}} & \textbf{40}& \textbf{60}& \textbf{80} & \textbf{100} & \textbf{120}\\
     \hline
-    Matlab time(S) & 3.07 & 13.65 & 50.43 & 118.84 & 251.54\\
+    CPU time(S) & 3.07 & 13.65 & 50.43 & 118.84 & 251.54\\
     \hline
-    CUDA without reuse data time(S) & 9.50 & 11.40 & 12.15 & 20.70 & 25.74\\
+    GPU without optimization time(S) & 9.50 & 11.40 & 12.15 & 20.70 & 25.74\\
     \hline
-    CUDA with reuse data time(S) & 0.44 & 0.63 & 0.98 & 2.01 & 2.97\\
+    GPU with optimization time(S) & 0.44 & 0.63 & 0.98 & 2.01 & 2.97\\
     \hline
     Speedups & 6.98 & 21.67 & 51.46 & 59.12 & 84.70\\
     \hline
@@ -529,26 +533,26 @@ We compare the CPU algorithm with the GPU algorithm in three metrics: running ti
   \label{tbl_runtime}
 \end{table}
 
-Fig.\ref{pic:runtime} shows that the running time of the two CUDA implementations and the Matlab implementation for $\mathcal{X}$ of size $n\times n \times 6$ of $\mathcal{L}$-rank 1, where $n$ varies from 40 to 120 at a step of 20. The sampling rate is set to 20\%, and both CPU and GPU algorithms iterate 5 itrations for completion. The detailed time value is listed in \ref{tbl_runtime}. 
+Fig.\ref{pic:runtime} shows that the running time of the two GPU implementations and the CPU implementation for $\mathcal{X}$ of size $n\times n \times 6$ of $\mathcal{L}$-rank 1, where $n$ varies from 40 to 120 at a step of 20. The sampling rate is set to 20\%, and both CPU and GPU algorithms iterate 5 itrations for completion. The detailed time value is listed in \ref{tbl_runtime}. 
 While $M = N_1 \times N_2 \times N_3 \times \text{sampling rate}$ and $\mathcal{A} \in \mathbb{R}^{M \times N_1N_2N_3}$, the scale of the main operation matrix $\mathcal{A}$ increases at a rate four times the rate of increase of $n$. 
-It can be seen that the run time of the Matlab method without any parallel strategy is polynomial with the increase of n, and both CUDA implementations are linearly changed. As for CUDA implementation without data reuse, when the matrix size is small, the data exchange takes up most of the running time and the running time is even longer than the Matlab implementation. 
+It can be seen that the run time of the CPU method without any parallel strategy is polynomial with the increase of n, and both GPU implementations are linearly changed. As for GPU implementation without data reuse, when the matrix size is small, the data exchange takes up most of the running time and the running time is even longer than the CPU implementation. 
 As for our final method, which is with data reuse and other parallel acceleration strategy, it achieves a good speedup at all scales and allows for greater speedups in larger data sizes where GPU memory is allowed.
 \begin{figure}[t]
     \centering
     \includegraphics[width=3.5in]{speedup.pdf}
-    \caption{Speedups of Matlab implemention and CUDA implementation}
+    \caption{Speedups of CPU implementation and GPU implementation}
     \label{pic:runtime}
 \end{figure}
 
-\subsection{Error Rate of Real Data}
+\subsection{Error Rate and Running Time of Real Data}
 \begin{figure}[t]
     \centering
     \includegraphics[width=3.5in]{rse.pdf}
-    \caption{RSE of Matlab implemention and CUDA implementation}
+    \caption{RSE of CPU implementation and GPU implementation}
     \label{pic:rse}
 \end{figure}
 
-This experiment compares the error rate if the Matlab and CUDA implementation under different iterations for $\mathcal{X}$ of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1. The sampling rate is set to 50\%.As shown in Fig. \ref{pic:rse}, when iteration varies from 1 to 30, the RSEs drop significantly. More importantly, the origin Matlab implementation and the CUDA implementation achieve almost the same RSEs at all iterations (the two curves in Fig. \ref{pic:rse} overlap), which means that the two implementations have similar error rate performance in tensor sensing.
+This experiment compares the error rate if the CPU and GPU implementation under different iterations for $\mathcal{X}$ of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1. The sampling rate is set to 50\%. The running time of the CPU algorithm is about 15 seconds, while the running time of the GPU algorithm is about 1 second. As shown in Fig. \ref{pic:rse}, when iteration varies from 1 to 30, the RSEs drop significantly. More importantly, the origin CPU implementation and the GPU implementation achieve almost the same RSEs at all iterations (the two curves in Fig. \ref{pic:rse} overlap), which means that the two implementations have similar error rate performance in tensor sensing.
 
 \section{Conclusions}
 
@@ -613,14 +617,14 @@ All appendix sections must be cited in the main text. In the appendixes, Figures
 % References, variant A: internal bibliography
 %=====================================
 \reftitle{References}
-\begin{thebibliography}{999}
+%\begin{thebibliography}{999}
 % Reference 1
-\bibitem[Author1(year)]{ref-journal}
-Author1, T. The title of the cited article. {\em Journal Abbreviation} {\bf 2008}, {\em 10}, 142-149, doi:xxxxx.
+%\bibitem[Author1(year)]{ref-journal}
+%Author1, T. The title of the cited article. {\em Journal Abbreviation} {\bf 2008}, {\em 10}, 142-149, doi:xxxxx.
 % Reference 2
-\bibitem[Author2(year)]{ref-book}
-Author2, L. The title of the cited contribution. In {\em The Book Title}; Editor1, F., Editor2, A., Eds.; Publishing House: City, Country, 2007; pp. 32-58, ISBN.
-\end{thebibliography}
+%\bibitem[Author2(year)]{ref-book}
+%Author2, L. The title of the cited contribution. In {\em The Book Title}; Editor1, F., Editor2, A., Eds.; Publishing House: City, Country, 2007; pp. 32-58, ISBN.
+%\end{thebibliography}
 
 % The following MDPI journals use author-date citation: Arts, Econometrics, Economies, Genealogy, Humanities, IJFS, JRFM, Laws, Religions, Risks, Social Sciences. For those journals, please follow the formatting guidelines on http://www.mdpi.com/authors/references
 % To cite two works by the same author: \citeauthor{ref-journal-1a} (\citeyear{ref-journal-1a}, \citeyear{ref-journal-1b}). This produces: Whittaker (1967, 1975)
@@ -629,12 +633,11 @@ Author2, L. The title of the cited contribution. In {\em The Book Title}; Editor
 %=====================================
 % References, variant B: external bibliography
 %=====================================
-%\externalbibliography{yes}
-%\bibliography{your_external_BibTeX_file}
+\externalbibliography{yes}
+\bibliography{mybibfile}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% optional
-\sampleavailability{Samples of the compounds ...... are available from the authors.}
 
 %% for journal Sci
 %\reviewreports{\\
@@ -645,4 +648,3 @@ Author2, L. The title of the cited contribution. In {\em The Book Title}; Editor
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
-
