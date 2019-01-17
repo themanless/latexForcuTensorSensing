@@ -291,44 +291,11 @@ where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \ma
 \end{equation}
 where $\mathcal{H}^c(\cdot): \mathbb{R}^{N_1N_2 \times N_2N_3} \to \mathbb{R}^M$ is the corresponding linear map in the circular matrix representation, with $\mathbf{y} = \mathcal{H}^c(\mathbf{X}^c)$. Each sensing tensor $\mathcal{A}_m$ is transfomed into its circular matrix $\mathbf{A}^c_m \in \mathbb{R}^{N_1N3 \times N_2N_3}$, and $\mathbf{y}_m = \langle \mathbf{X}^c, \mathbf{A}^c_m \rangle$, $1 \leq m \leq M$. Similarly, $\mathbf{U}^c$ can be estimated in the follow way:
 \begin{equation}
+    \label{eqa:8}
     \widehat{\mathbf{U}}^c =
     \mathop{\arg\min}_{ \mathbf{U} \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^{cT}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 . \\
 \end{equation}
 
-We perform the following steps to solve this non-convex optimization problem:
-\begin{steps}
-\item $\mathbf{U}^c$ is used to form a block diagonal matrix $\mathbf{B}_1$ of size $N_1N_2N^2_3 \times rN_2N^2_3$, and the number of $\mathbf{U}^c$ is $N_2N_3$,
-    \begin{equation}
-        \mathbf{B}_1 = 
-        \begin{bmatrix}
-            \mathbf{U}^c & & & \\
-            & \mathbf{U}^c & & \\
-            & & \ddots & \\
-            & & & \mathbf{U}^c
-        \end{bmatrix}
-    \end{equation}
-\item Stack all the columns of $\mathbf{V}^c$, and then $\mathbf{V}^c$ is vectorized to a vector $\mathbf{b}$ of size $rN_2N_3N^2_3 \times 1$ as following:
-    \begin{equation}
-        \mathbf{b} = \text{vec}(\mathbf{V}^c) =[\mathbf{V}^c(:,1)^T, \mathbf{V}^c(:,2)^T, \dots, \mathbf{V}^c(:,N_2N_3)^T]^T. 
-    \end{equation}
-
-\item Each $\mathbf{A}^c_m$, $1 \leq m \leq M$ is represented as a vector $\mathbf{c}_m$ of size $N_1N_2N^2_3 \times 1$ in the following way:
-    \begin{equation}
-        \mathbf{c}_m = \text{vec}(\mathbf{A}^c_m) \\
-        =[\mathbf{A}^c_m(:,1)^T, \mathbf{A}^c_m(:,2)^T, \dots, \mathbf{A}^c_m(:,N_2N_3)^T]^T.
-    \end{equation}
-
-    And then all the $\mathbf{c}_m$ are transfomed into a matrix $\mathbf{B}_2$ of size $M \times N_1N_2N^2_3$:
-    \begin{equation}
-        \mathbf{B}_2 = [\mathbf{c}_1, \mathbf{c}_2, \dots, \mathbf{c}_M]^T
-    \end{equation}
-    Therefore, the estimation of $\mathbf{V}^c$ is transformed into the following standard least squares minimization problem:
-        \begin{equation}
-            \widehat{\mathbf{b}} =
-            \mathop{\arg\min}_{ \mathbf{b} \in \mathbb{R}^{rN_2N^2_3 \times 1}} \| \mathbf{y} - \mathbf{B}_2\mathbf{B}_1b) \|_F^2 .
-        \end{equation}
-
-\end{steps}
 
 \subsubsection{Optimization of Alt-Min}
 In circular algebra, it is obvious that the first column of $\underline{\alpha}^c$ contains all the entries of itself, so it is no need to recover the redundant information. We only need to recover the first column of each circ($\underline{\mathbf{X}}_{i,j}$). We use the Matlab function squeeze($\cdot$)  to get a new definition:
@@ -354,29 +321,86 @@ where $\mathcal{H}^s(\cdot):\mathbb{R}^{N_1N_3\times N_2} \to \mathbb{R}^{M}$ is
 Similarly, the $\mathbf{U}^c$ can be estimated in the following way:
 \begin{equation}
     \widehat{\mathbf{U}}^c = 
-    \mathop{\arg\min}_{ \mathbf{U}^c \in \mathbb{R}^{N_1N_3 \times rN_3}} \| \mathbf{y} - {\mathcal{H}^s}^T({\mathbf{U}^c}^T{\mathbf{V}^s}^T) \|_F^2, \\
+    \mathop{\arg\min}_{ \mathbf{U}^c \in \mathbb{R}^{N_1N_3 \times rN_3}} \| \mathbf{y} - {\mathcal{H}^s}^T({\mathbf{U}^c}^T{\mathbf{V}^s}^T) \|_F^2. \\
 \end{equation}
 
+Alg.\ref{alg:LS} shows the tensor sensing approach with optimization of Alt-Min.
 
+\begin{algorithm}[htb]
+\setstretch{2}
+    \caption{Pseudocode of the Tensor Sensing}
+    \label{alg:TS}
+    \begin{algorithmic}[1]
+        \Require
+        linear map $\mathcal{H}(\cdot)$, measurement vector $\mathbf{y}$, $\mathcal{L}$-rank $r$, iteration number $L$.
+        \Ensure squeezed $\mathcal{X} $: $\mathbf{X}^s$
+        \State Initialize $\mathcal{U}^c$ randomly;
+        \For{$\ell = 1$ to $L$} 
+        \State \[ \widehat{\mathbf{V}}^s = \mathop{\arg\min}_{ \mathbf{V}^s \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^s(\mathbf{U}^c\mathbf{V}^s) \|_F^2 \]
+    \State \[ \widehat{\mathbf{U}}^c = \mathop{\arg\min}_{ \mathbf{U}^c \in \mathbb{R}^{N_1N_3 \times rN_3}} \| \mathbf{y} - {\mathcal{H}^s}^T({\mathbf{U}^c}^T{\mathbf{V}^s}^T) \|_F^2 \]
+            \EndFor
+        \State $\mathbf{X}^s = \mathbf{U}^c\mathbf{V}^s$
+    \end{algorithmic}
+\end{algorithm}
 
-\section{The Implementation and Optimization of Efficient GPU Tensor Sensing}
-\label{SEC_GPU}
-%psuado code
-The pseudo code of the tensor sensing approach is shown in Alg.\ref{list:pseudocode}. To achieve high performance on GPUs, we need to consider the data representation, the mappings from computations to GPU threads, and memory accesses. We first design a basic GPU tensor sensing implementation, then optimize the implementation to further improve performance.
+\subsubsection{Implementation on CPU}
+We perform the following steps to solve the non-convex optimization problem in main step in Alg.\ref{alg:TS}(line 3 and line 4):
+\begin{steps}
+\item $\mathbf{U}^c$ is used to form a block diagonal matrix $\mathbf{B}_1$ of size $N_1N_2N^2_3 \times rN_2N^2_3$, and the number of $\mathbf{U}^c$ is $N_2N_3$,
+    \begin{equation}
+        \label{eqa:diag}
+        \mathbf{B}_1 = 
+        \begin{bmatrix}
+            \mathbf{U}^c & & & \\
+            & \mathbf{U}^c & & \\
+            & & \ddots & \\
+            & & & \mathbf{U}^c
+        \end{bmatrix}
+    \end{equation}
+\item Stack all the columns of $\mathbf{V}^c$, and then $\mathbf{V}^c$ is vectorized to a vector $\mathbf{b}$ of size $rN_2N_3N^2_3 \times 1$ as following:
+    \begin{equation}
+        \mathbf{b} = \text{vec}(\mathbf{V}^c) =[\mathbf{V}^c(:,1)^T, \mathbf{V}^c(:,2)^T, \dots, \mathbf{V}^c(:,N_2N_3)^T]^T. 
+    \end{equation}
+
+\item Each $\mathbf{A}^c_m$, $1 \leq m \leq M$ is represented as a vector $\mathbf{c}_m$ of size $N_1N_2N^2_3 \times 1$ in the following way:
+    \begin{equation}
+        \mathbf{c}_m = \text{vec}(\mathbf{A}^c_m) \\
+        =[\mathbf{A}^c_m(:,1)^T, \mathbf{A}^c_m(:,2)^T, \dots, \mathbf{A}^c_m(:,N_2N_3)^T]^T.
+    \end{equation}
+
+    And then all the $\mathbf{c}_m$ are transfomed into a matrix $\mathbf{B}_2$ of size $M \times N_1N_2N^2_3$:
+    \begin{equation}
+        \mathbf{B}_2 = [\mathbf{c}_1, \mathbf{c}_2, \dots, \mathbf{c}_M]^T
+    \end{equation}
+    Therefore, the estimation of $\mathbf{V}^c$ is transformed into the following standard least squares minimization problem:
+        \begin{equation}
+            \label{eqa:lsm}
+            \widehat{\mathbf{b}} =
+            \mathop{\arg\min}_{ \mathbf{b} \in \mathbb{R}^{rN_2N^2_3 \times 1}} \| \mathbf{y} - \mathbf{B}_2\mathbf{B}_1b) \|_F^2 .
+        \end{equation}
+
+\end{steps}
+We use pseudo code(Alg.\ref{list:pseudocode}) with some Matlab api to demonstrate the implementation of tensor sensing on CPU.
 \begin{algorithm}
 \setstretch{2}
-\caption{Pseudocode of the Tensor Sensing}
+\caption{Implementation of the Tensor Sensing on CPU}
 \label{list:pseudocode}
 \begin{algorithmic}[1]
     \Require Randomly initialized $\mathbf{U}_0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
     \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
     \For{$i = 1 \to IterNum$} 
-        \State $\mathbf{U}_{d} = \text{diag}(\mathbf{U})$
+    \State \textcolor{green}{\%\% form the block diagonal matrix in equation.\ref{eqa:diag} of step 1 above}
+    \State $\mathbf{U}_{d} = \text{diag}(\mathbf{U})$ 
         \State $\mathbf{W} = \mathbf{A} \mathbf{U}_{d}$
+        \State \textcolor{green}{\%\% perform the least squares minimization in equation.\ref{eqa:lsm} of step 3}
         \State $\mathbf{V}_{v} = \mathbf{W} \backslash \mathbf{y}$
+        \State \textcolor{green}{\%\% clear the memory of the middle result}
         \State $\text{clear}(\mathbf{W})$
+        \State \textcolor{green}{\%\% transform the vectorized matrix back to matrix form}
         \State $\mathbf{V} = \text{Vec2Mat}(\mathbf{V}_{v})$
+        \State \textcolor{green}{\%\% noted by Alg.\ref{alg:TS}(line 4), transpose the matrix}
         \State $\mathbf{V}_t = \text{transpose}(\mathbf{V})$
+        \State \textcolor{green}{\%\% perform the same process as above to get $\mathbf{U}$}
         \State $\mathbf{V}_{t_{d}} = \text{diag}(\mathbf{V}_t)$
         \State $\mathbf{W} = \mathbf{A}_t \mathbf{V}_{t_{d}}$
         \State $\mathbf{U}_{v} = \mathbf{W} \backslash \mathbf{y}$
@@ -386,6 +410,10 @@ The pseudo code of the tensor sensing approach is shown in Alg.\ref{list:pseudoc
     \State \Return $\mathbf{X} = \mathbf{U} \mathbf{V}$
     \end{algorithmic}
     \end{algorithm}
+\section{The Implementation and Optimization of Efficient GPU Tensor Sensing}
+\label{SEC_GPU}
+%psuado code
+To achieve high performance on GPUs, we need to consider the data representation, the mappings from computations to GPU threads, and memory accesses. We first design a basic GPU tensor sensing implementation, then optimize the implementation to further improve performance.
 
 \subsection{Design and Implementation of the GPU Tensor Sensing}
 \subsubsection{Data Struct}
