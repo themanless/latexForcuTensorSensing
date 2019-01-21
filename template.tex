@@ -8,6 +8,8 @@
 \usepackage{amsthm}
 \usepackage{amsmath}
 \usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{subfigure}
 \usepackage{color} %red, green, blue, yellow, cyan, magenta, black, white
 \definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
 \definecolor{mylilas}{RGB}{170,55,241}
@@ -182,234 +184,86 @@ Existing works on RF tomographic imaging can be classified into vector-based and
 GPUs have massive parallelism and high memory bandwidth, and many existing researches \cite{jing2016energy} \cite{zhang2015buddy} \cite{zhang2015efficient} \cite{zhang2014cuirre} \cite{zhang2016efficient} have demonstrated the benefit of utilizing GPUs to accelerate general purpose computing. Due to the high dimensions of tensors, tensor computations are often computation-intensive and time consuming. Recently, GPUs have been increasingly adopted to accelerate diverse tensor computations. Some works focus on accelerating specific tensor operations including tensor contraction \cite{nelson2015generating} \cite{shi2016tensor}, factorization \cite{antikainen2011nonnegative}, transpose \cite{lyakh2015an} \cite{hynninen2017cutt}, and tensor-matrix multiplication \cite{rogers2016efficient}. These works propose parallel tensor algorithms specifically optimized for the GPU architectures. GPUTENSOR \cite{zou2015gputensor} is a parallel tensor factorization algorithm that splits a tensor into smaller blocks and exploits the inherent parallelism and high-memory bandwidth of GPUs. To handle dynamic tensor data, GPUTENSOR updates its previously factorized components instead of recomputing them from the raw data. Sparse tensor-times-dense matrix multiply is a critical bottleneck in data analysis and mining applications and \cite{li2016optimizing} proposed an efficient primitive on CPU and GPU platforms. Different with these works, our work considers the tensor sensing based on the transform tensor model for RF tomographic imaging.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Notations and the Tensor Sensing Problem}
+\section{Description of the Tensor Sensing Problem}
 \label{SEC_ALGORITHM}
 Deng et al. \cite{deng2018tensor} proposed to use the transform-based tensor model to formulate the RF tomographic imaging as a tensor sensing problem. Then they utilized a fast iterative algorithm Alt-Min to solve the tensor sensing problem. Here we briefly summarize their approach including the Alt-Min algorithm in order to map it onto the GPU architecture.
 
-\subsection{Notations and the Transform-based Tensor Model}
-We use lowercase boldface letter $\mathbf{x} \in \mathbb{R}^{N_1}$ to denote a vector, uppercase boldface letter $\mathbf{X} \in \mathbb{R}^{N_1 \times N_2}$ to denote a matrix, 
-and calligraphic letter $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ to denote a tensor. $[k]$ denotes the set $\{1,2,\dots, k\}$. Let $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ 
-denote a third-order tensor. $\mathcal{A}(:,j,k)$, $\mathcal{A}(i,:,k)$, $\mathcal{A}(i,j:)$ denote mode-1, mode-2, mode-3 tubes of $\mathcal{A}$, and $\mathcal{A}(:,:,k)$, $\mathcal{A}(:,j,:)$ $\mathcal{A}(i,:,:)$ 
-denote the frontal, lateral, and horizontal slices. The Frobenius norm of $\mathcal{A}$ is defined as $\|\mathcal{A}\|_F = \sqrt{\sum ^{N_1}_{i = 1} \sum ^{N_2}_{j = 1} \sum ^{N_3}_{k = 1} \mathcal{A}^2_{ijk}}$.
-The operator vec(.) transforms tensors and matrices into vectors. Let $\mathbf{X}^{T}$ and $\mathcal{A}^{\dagger}$ denote the transposes of a matrix and a tensor, respectively.
-\begin{defn}\cite{liu2017fourth}
-    Given an invertible discrete transform $\mathcal{L}:\mathbb{R}^{1\times 1 \times N_3} \to \mathbb{R}^{1\times 1\times N_3}$, the elementwise multiplication $\circ$, and $\mathbf{a}, \mathbf{b} \in \mathbb{R}^{1\times 1\times N_3}$ , the tubal-scalar multiplication is defined as:
-        \begin{equation}
-            \mathbf{a} \bullet \mathbf{b} = \mathcal{L}^{-1}(\mathcal{L}(\mathbf{a})\circ \mathcal{L}(\mathbf{b}))
-        \end{equation}
-\end{defn}
-
-\begin{defn}\cite{liu2017fourth}
-    The $\mathcal{L}$-product $\mathcal{A} = \mathcal{B} \bullet \mathcal{C}$ of $\mathcal{B} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{C} \in \mathbb{R}^{r\times \times N_2 \times N_3}$ is a tensor of size $N_1 \times N_2 \times N_3$, where $\mathcal{A}(i,j,:) = \sum^r_{s=0}\mathcal{B}(i,s,:)\bullet \mathcal{C}(s,j,:)$, for $i \in [N_1]$ and $j \in [N_2]$.
-\end{defn}
-
-\begin{defn}\cite{liu2017fourth}
-    The transform domain singular value decomposition $\mathcal{L}$-SVD of $\mathcal{A} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ is given by $\mathcal{A} = \mathcal{U} \bullet \mathcal{S} \bullet \mathcal{V}^{\dagger}$, where $\mathcal{U}$ and $\mathcal{V}$ are $\mathcal{L}$-orthogonal tensors of size $N_1 \times N_1 \times N_3$ and $N_2 \times N_2 \times N_3$ respectively, and $\mathcal{S}$ is a diagonal tensor of size $N_1 \times N_2 \times N_3$. The entries of $\mathcal{S}$ are called the singular values of $\mathcal{A}$, and the number of non-zero ones is called the $\mathcal{L}$-rank of $\mathcal{A}$.
-\end{defn}
-
-\subsection{The Tensor Sensing Problem}
-
-The loss field tensor$\mathcal{X} \in \mathbb{X}^{N_1 \times N_2 \times N_3}$ with $\mathcal{L}$-rank $r$ is what we want to reconstruct. We make the RF signal measurement $M$ times, and let $\mathbf{y}_m$ denote the value of the $m$-th RF signal measurement and the sensing tensors is denoted by $\mathcal{A}_m \in \mathbb{R}^{N_1 \times N_2 \times N_3}$. Then we have:
-\begin{equation}
-    \mathbf{y} = \sum\limits_{{n_1,n_2,n_3}}\mathcal{A}_m(n_1,n_2,n_3)\mathcal{X}(n_1, n_2, n_3)+w,
-\end{equation}
-where $w$ is the noise.
-With a linear map $\mathcal{H}(\cdot):\mathbb{R}^{N_1 \times N_2 \times N_3} \to \mathbb{R}^M$\cite{jain2013low} and the vector $\mathbf{y} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$ made by $M$ RF signal measurements $\mathbf{y}_m$ \cite{kong2014data}. We get:
-\begin{equation}
-    \mathbf{y} = \mathcal{H}(\mathcal{X}) + \mathbf{w},
-\end{equation}
-where $\mathbf{w}$ denotes the noise vector. This problem can be formulated as a low $\mathcal{L}$-rank tensor sensing problem:
-\begin{equation}
-    \label{eqa:lstm}
-    \widehat{\mathcal{X}} = \mathop{\arg\min}_{\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}}  \| \mathbf{y} - \mathcal{H}(\mathcal{X}) \|_F^2 , \\ 
-    \text{s.t.} \text{rank}(\mathcal{X}) \leq r .
-\end{equation}
-
-\subsubsection{Solving the Tensor Sensing Problem with the Alt-Min Algorithm}
+\subsection{Alt-Min Algorithm}
+    The goal of tensor sensing is to recover the loss field tensor $\mathcal{X}$ from the linear map matrix $\mathbf{A}$ and the measurement vector $\mathbf{y}$, which is formulated as following:
+    \begin{equation}
+        \label{eqa:lstm}
+        \widehat{\mathbf{X}} = \mathop{\arg\min}_{\mathbf{X}}  \| \mathbf{y} - \mathbf{A}\mathbf{X} \|_F^2 , \\ 
+        \text{s.t.} \text{rank}(\mathbf{X}) \leq r .
+    \end{equation}
+    This method uses Alt-Min algorithm(Alg.\ref{alg:TS}) to iteratively estimate two low rank matrices whose matrix product is the squeezed matrix of the object tensor $\mathcal{X}$. 
 \begin{algorithm}[htb]
 \setstretch{2}
-    \caption{Alt-Min: AM($\mathcal{H}(\cdot), \mathbf{y}, r, L$)}
-    \label{alg:AM}
-    \begin{algorithmic}[1]
-        \Require
-        linear map $\mathcal{H}(\cdot)$, measurement vector $\mathbf{y}$, $\mathcal{L}$-rank $r$, iteration number $L$.
-        \State Initialize $\mathcal{U}^0$ randomly;
-        \For{$\ell = 1$ to $L$} 
-            \State $\mathcal{V}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathcal{U}^{\ell -1}, \mathbf{y}, r)$
-            \State $\mathcal{U}^{\ell} \gets \text{LS}(\mathcal{H}(\cdot), \mathcal{V}^{\ell}, \mathbf{y}, r)$
-            \EndFor
-        \Ensure: Pair of tensors ($\mathcal{U}^L, \mathcal{V}^L$).
-    \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[htb]
-\setstretch{2}
-    \caption{Least Squares Minimization: LS($\mathcal{H}(\cdot), \mathcal{U}, r, \mathbf{Y}$)}
-    \label{alg:LS}
-    \begin{algorithmic}[2]
-        \Require
-        linear map $\mathcal{H}(\cdot)$, tensor $\mathcal{U} \in \mathbb{R}^{N_1\times r \times N_3}$, measurement vector $\mathbf{y}$, $\mathbf{L}$-rank $r$.
-    \State \[
-    \widehat{\mathcal{V}} = \mathop{\arg\min}_{\mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , 
-    \]
-    \Ensure tensor $\mathcal{V}$
-    \end{algorithmic}
-\end{algorithm}
-Alg.\ref{alg:AM} shows how the alternating minimization algorithm works on the tensor sensing problem. The target tensor is represented as the $\mathcal{L}$-product of two smaller tensors, i.e., $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times N_2 \times N_3}$, $\mathcal{X} \in \mathbb{R}^{N_1 \times r \times N_3}$ and $\mathcal{X} \in \mathbb{R}^{r \times N_2 \times N_3}$.
-Then equation \eqref{eqa:lstm} can be reformulated as following:
-\begin{equation}
-    \widehat{\mathcal{X}} =
-    \mathop{\arg\min}_{ \mathcal{U} \in \mathbb{R}^{N_1 \times r \times N_3}, \mathcal{V} \in \mathbb{R}^{r \times N_2 \times N_3}}\| \mathbf{y} - \mathcal{H}(\mathcal{U} \bullet \mathcal{V}) \|_F^2 , \\
-\end{equation}
-The key step is the least squares (LS) minimization, as shown in Alg. \ref{alg:LS}. The detailed implementation of LS minimization are summarized as follows.
-
-We use the circulant algebra \cite{liu2016low} \cite{gleich2013power} to perform the $\mathcal{L}$-product. The operator circ($\cdot$) denotes mapping circulants to their corresponding circular matrices which are tagged with the superscript $c$, i.e. $\underline{\alpha}^c, \underline{\mathbf{A}}^c$:
-\[
-    \underline{\alpha}^c = \text{circ}(\underline{\alpha}) = \begin{bmatrix}
-        \alpha_1 & \alpha_{N_3} & \cdots  & \alpha_2 \\
-        \alpha_2 & \alpha_1 & \cdots & \cdots \\
-        \vdots & \vdots & \vdots & \alpha_{N_3} \\
-        \alpha_{N_3} & \alpha_{N_3-1} & \cdots & \alpha_1
-    \end{bmatrix}
-    \],
-    \[
-        \underline{\mathbf{A}}^c = \text{circ}(\underline{\mathbf{A}}) = \begin{bmatrix}
-            \text{circ}(\underline{\mathbf{A}_{1,1}})  & \cdots & \text{circ}(\underline{\mathbf{A}}_{1,N_2)}) \\
-            \vdots & \vdots & \vdots \\
-            \text{circ}(\underline{\mathbf{A}_{N_1,1}})  & \cdots & \text{circ}(\underline{\mathbf{A}}_{N_1,N_2)}) \\
-        \end{bmatrix}
-        \].
-
-For simplicity, we use $\mathbf{A}^c$ to represent the circular matrix of tensor $\mathcal{A}$. Then the $\mathcal{L}$-product $\mathcal{X} = \mathcal{U} \bullet \mathcal{V}$ has an equivalent matrix-product as:
-\begin{equation}
-    \mathbf{X}^c = \mathbf{U}^c\mathbf{V}^c,
-\end{equation}
-where $\mathbf{X}^c \in \mathbb{R}^{N_1N_3\times N_2N_3}$, $\mathbf{U}^c \in \mathbb{R}^{N_1N_3\times rN_3}$, $\mathbf{V}^c \in \mathbb{R}^{rN_3\times N_2N_3}$. Then the LS minimization in Alg.\ref{alg:LS} can be transformed to the corresponding circular matrix representation:
-\begin{equation}
-    \widehat{\mathbf{V}}^c = 
-    \mathop{\arg\min}_{ \mathbf{V}^c \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^c(\mathbf{U}^c\mathbf{V}^c) \|_F^2 , \\
-\end{equation}
-where $\mathcal{H}^c(\cdot): \mathbb{R}^{N_1N_2 \times N_2N_3} \to \mathbb{R}^M$ is the corresponding linear map in the circular matrix representation, with $\mathbf{y} = \mathcal{H}^c(\mathbf{X}^c)$. Each sensing tensor $\mathcal{A}_m$ is transfomed into its circular matrix $\mathbf{A}^c_m \in \mathbb{R}^{N_1N3 \times N_2N_3}$, and $\mathbf{y}_m = \langle \mathbf{X}^c, \mathbf{A}^c_m \rangle$, $1 \leq m \leq M$. Similarly, $\mathbf{U}^c$ can be estimated in the follow way:
-\begin{equation}
-    \label{eqa:8}
-    \widehat{\mathbf{U}}^c =
-    \mathop{\arg\min}_{ \mathbf{U} \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^{cT}(\mathbf{U}^c\mathbf{V}^c) \|_F^2 . \\
-\end{equation}
-
-
-\subsubsection{Optimization of Alt-Min}
-In circular algebra, it is obvious that the first column of $\underline{\alpha}^c$ contains all the entries of itself, so it is no need to recover the redundant information. We only need to recover the first column of each circ($\underline{\mathbf{X}}_{i,j}$). We use the Matlab function squeeze($\cdot$)  to get a new definition:
-\[
-    \mathbf{X}^s = \begin{bmatrix}
-        \text{squeeze}(\mathcal{X}(1,1,:)) & \cdots & \text{squeeze}(\mathcal{X}(1,N_2,:)) \\
-        \vdots & \ddots & \vdots \\
-        \text{squeeze}(\mathcal{X}(N_1,1,:)) & \cdots & \text{squeeze}(\mathcal{X}(N_1,N_2,:))
-    \end{bmatrix}
-\],
-where squeeze$(\mathcal{X}(i,j:))$ transforms the $i$-th tube of the $j$-th lateral slice of $\mathcal{X}$ into a vector of size $N_3 \times 1$.
-
-We use the notation $\Leftrightarrow$ to denote a new mapping for $\mathcal{L}$-product as follows:
-\begin{equation}
-    \mathcal{X} = \mathcal{U}\bullet \mathcal{V} \Leftrightarrow \mathbf{X}^s = \mathbf{U}^c\mathbf{V}^s,
-\end{equation}
-where $\mathbf{X}^s \in \mathbf{R}^{N_1N_3 \times N_2}$, $\mathbf{U}^c \in \mathbf{R}^{N_1N_3 \times N_3}$, $\mathbf{V}^s \in \mathbf{R}^{rN_3 \times N_2}$. Then the LS minimization in Alg. \ref{alg:LS} can be transformed to the following representation:
-\begin{equation}
-    \widehat{\mathbf{V}}^s = 
-    \mathop{\arg\min}_{ \mathbf{V}^s \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^s(\mathbf{U}^c\mathbf{V}^s) \|_F^2 , \\
-\end{equation}
-where $\mathcal{H}^s(\cdot):\mathbb{R}^{N_1N_3\times N_2} \to \mathbb{R}^{M}$ is the corresponding linear map, with $\mathbf{y} = \mathbf{H}^s(\mathbf{X}^s), \mathbf{y}_m = \langle \mathbf{X}^s, \mathbf{A}^s_m \rangle$, $1 \leq m \leq M$.
-Similarly, the $\mathbf{U}^c$ can be estimated in the following way:
-\begin{equation}
-    \widehat{\mathbf{U}}^c = 
-    \mathop{\arg\min}_{ \mathbf{U}^c \in \mathbb{R}^{N_1N_3 \times rN_3}} \| \mathbf{y} - {\mathcal{H}^s}^T({\mathbf{U}^c}^T{\mathbf{V}^s}^T) \|_F^2. \\
-\end{equation}
-
-Alg.\ref{alg:LS} shows the tensor sensing approach with optimization of Alt-Min.
-
-\begin{algorithm}[htb]
-\setstretch{2}
-    \caption{Pseudocode of the Tensor Sensing}
+    \caption{Alt-Min Algorithm of the Tensor Sensing}
     \label{alg:TS}
     \begin{algorithmic}[1]
         \Require
-        linear map $\mathcal{H}(\cdot)$, measurement vector $\mathbf{y}$, $\mathcal{L}$-rank $r$, iteration number $L$.
-        \Ensure squeezed $\mathcal{X} $: $\mathbf{X}^s$
-        \State Initialize $\mathcal{U}^c$ randomly;
+        linear map matrix $\mathbf{A}$, measurement vector $\mathbf{y}$, iteration number $L$.
+        \Ensure squeezed $\mathcal{X} $: $\mathbf{X}$
+        \State Initialize $\mathcal{U}^0$ randomly;
         \For{$\ell = 1$ to $L$} 
-        \State \[ \widehat{\mathbf{V}}^s = \mathop{\arg\min}_{ \mathbf{V}^s \in \mathbb{R}^{rN_3 \times N_2N_3}} \| \mathbf{y} - \mathcal{H}^s(\mathbf{U}^c\mathbf{V}^s) \|_F^2 \]
-    \State \[ \widehat{\mathbf{U}}^c = \mathop{\arg\min}_{ \mathbf{U}^c \in \mathbb{R}^{N_1N_3 \times rN_3}} \| \mathbf{y} - {\mathcal{H}^s}^T({\mathbf{U}^c}^T{\mathbf{V}^s}^T) \|_F^2 \]
+            \State $\mathbf{V}^{\ell} \gets \text{least squares minimization}(\mathbf{A}, \mathbf{U}^{\ell -1}, \mathbf{y} )$
+            \State $\mathbf{U}^{\ell} \gets \text{least squares minimization}(\mathbf{A}, \mathbf{V}^{\ell}, \mathbf{y})$
             \EndFor
-        \State $\mathbf{X}^s = \mathbf{U}^c\mathbf{V}^s$
+        \Ensure: Pair of tensors ($\mathbf{U}^L, \mathbf{V}^L$).
     \end{algorithmic}
 \end{algorithm}
-
-\subsubsection{Implementation on CPU}
-We perform the following steps to solve the non-convex optimization problem in main step in Alg.\ref{alg:TS}(line 3 and line 4):
-\begin{steps}
-\item $\mathbf{U}^c$ is used to form a block diagonal matrix $\mathbf{B}_1$ of size $N_1N_2N^2_3 \times rN_2N^2_3$, and the number of $\mathbf{U}^c$ is $N_2N_3$,
-    \begin{equation}
-        \label{eqa:diag}
-        \mathbf{B}_1 = 
-        \begin{bmatrix}
-            \mathbf{U}^c & & & \\
-            & \mathbf{U}^c & & \\
-            & & \ddots & \\
-            & & & \mathbf{U}^c
-        \end{bmatrix}
-    \end{equation}
-\item Stack all the columns of $\mathbf{V}^c$, and then $\mathbf{V}^c$ is vectorized to a vector $\mathbf{b}$ of size $rN_2N_3N^2_3 \times 1$ as following:
-    \begin{equation}
-        \mathbf{b} = \text{vec}(\mathbf{V}^c) =[\mathbf{V}^c(:,1)^T, \mathbf{V}^c(:,2)^T, \dots, \mathbf{V}^c(:,N_2N_3)^T]^T. 
-    \end{equation}
-
-\item Each $\mathbf{A}^c_m$, $1 \leq m \leq M$ is represented as a vector $\mathbf{c}_m$ of size $N_1N_2N^2_3 \times 1$ in the following way:
-    \begin{equation}
-        \mathbf{c}_m = \text{vec}(\mathbf{A}^c_m) \\
-        =[\mathbf{A}^c_m(:,1)^T, \mathbf{A}^c_m(:,2)^T, \dots, \mathbf{A}^c_m(:,N_2N_3)^T]^T.
-    \end{equation}
-
-    And then all the $\mathbf{c}_m$ are transfomed into a matrix $\mathbf{B}_2$ of size $M \times N_1N_2N^2_3$:
-    \begin{equation}
-        \mathbf{B}_2 = [\mathbf{c}_1, \mathbf{c}_2, \dots, \mathbf{c}_M]^T
-    \end{equation}
-    Therefore, the estimation of $\mathbf{V}^c$ is transformed into the following standard least squares minimization problem:
-        \begin{equation}
-            \label{eqa:lsm}
-            \widehat{\mathbf{b}} =
-            \mathop{\arg\min}_{ \mathbf{b} \in \mathbb{R}^{rN_2N^2_3 \times 1}} \| \mathbf{y} - \mathbf{B}_2\mathbf{B}_1b) \|_F^2 .
-        \end{equation}
-
-\end{steps}
-We use pseudo code(Alg.\ref{list:pseudocode}) with some Matlab api to demonstrate the implementation of tensor sensing on CPU.
+\subsection{Implementation of the Tensor Sensing on CPU}
+Alg.\ref{alg:psesudocode} shows the implementation of tensor sensing on CPU. 
 \begin{algorithm}
 \setstretch{2}
 \caption{Implementation of the Tensor Sensing on CPU}
 \label{list:pseudocode}
 \begin{algorithmic}[1]
-    \Require Randomly initialized $\mathbf{U}_0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
-    \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
+    \Require Randomly initialized matrix $\mathbf{U}$, measurement vector $\mathbf{y}$, linear map matrix $\mathbf{A}$
+    \Ensure $\mathbf{X}$
     \For{$i = 1 \to IterNum$} 
-    \State \textcolor{green}{\%\% form the block diagonal matrix in equation.\ref{eqa:diag} of step 1 above}
-    \State $\mathbf{U}_{d} = \text{diag}(\mathbf{U})$ 
-        \State $\mathbf{W} = \mathbf{A} \mathbf{U}_{d}$
-        \State \textcolor{green}{\%\% perform the least squares minimization in equation.\ref{eqa:lsm} of step 3}
-        \State $\mathbf{V}_{v} = \mathbf{W} \backslash \mathbf{y}$
-        \State \textcolor{green}{\%\% clear the memory of the middle result}
-        \State $\text{clear}(\mathbf{W})$
-        \State \textcolor{green}{\%\% transform the vectorized matrix back to matrix form}
-        \State $\mathbf{V} = \text{Vec2Mat}(\mathbf{V}_{v})$
-        \State \textcolor{green}{\%\% noted by Alg.\ref{alg:TS}(line 4), transpose the matrix}
-        \State $\mathbf{V}_t = \text{transpose}(\mathbf{V})$
-        \State \textcolor{green}{\%\% perform the same process as above to get $\mathbf{U}$}
-        \State $\mathbf{V}_{t_{d}} = \text{diag}(\mathbf{V}_t)$
-        \State $\mathbf{W} = \mathbf{A}_t \mathbf{V}_{t_{d}}$
-        \State $\mathbf{U}_{v} = \mathbf{W} \backslash \mathbf{y}$
-        \State $\text{clear}(\mathbf{W})$
-        \State $\mathbf{U} = \text{transpose}(\text{Vec2Mat}(\mathbf{U}_{v}))$
+        \State use $\mathbf{U}$ to form a block diagonal matrix $\mathbf{U}_b$
+        \State $\mathbf{W}\gets \mathbf{A} \ast \mathbf{U}_{b}$
+        \State vec($\mathbf{V}$) $\gets$ perform least square minimization on $\mathbf{W}$ and $\mathbf{y}$
+        \State $\mathbf{V} \gets$  transform vec($\mathbf{V}$) back to matrix form
+        \State $\mathbf{V}_t \gets \text{transpose} \mathbf{V}$
+        \State use $\mathbf{V}$ to form a block diagonal matrix $\mathbf{V}_{t_b}$
+        \State $\mathbf{A}_t \gets \text{transpose} \mathbf{A}$
+        \State $\mathbf{W} = \mathbf{A}_t \ast \mathbf{V}_{t_{b}}$
+        \State vec($\mathbf{U}_t$) $\gets$ perform least square minimization on $\mathbf{W}$ and $\mathbf{y}$
+        \State $\mathbf{U}_t \gets$  transform vec($\mathbf{U}_t$) back to matrix form
+        \State $\mathbf{U} \gets \text{transpose} \mathbf{U}_t$
     \EndFor
     \State \Return $\mathbf{X} = \mathbf{U} \mathbf{V}$
     \end{algorithmic}
     \end{algorithm}
+    First, use $\mathbf{U}$ of previous iteration(for the first iteration, $\mathbf{U}$ is initialized randomly) is used to form a block diagonal matrix $\mathbf{U}_b$(Alg.\ref{alg:LS} line 2):
+    \begin{equation}
+        \label{eqa:diag}
+        \mathbf{U}_b = 
+        \begin{bmatrix}
+            \mathbf{U} & & & \\
+            & \mathbf{U} & & \\
+            & & \ddots & \\
+            & & & \mathbf{U}
+        \end{bmatrix}
+    \end{equation}
+    Next, solve the least square minimization problem to estimate $\mathbf{V}$ of the next iteration(Alg.\ref{alg:LS} line 3 and line 4). The least minimization problem is formulated as following:
+        \begin{equation}
+            \label{eqa:lsm}
+            \text{vec}(\mathbf{V})=
+        \mathop{\arg\min}_{ \mathbf{V}} \| \mathbf{y} - \mathbf{A}\mathbf{U}_b\mathbf{V} \|_F^2
+        \end{equation}
+        As the estimated $\mathbf{V}$ is in vector form vec($\mathbf{V}$), transform vec($\mathbf{V}$) back to matrix form $\mathbf{V}$(Alg.\ref{alg:LS} line 5).
+        To estimate $\mathbf{U}$, the least square minimization problem in equation.\ref{eqa:lsm} should transpose:
+        \begin{equation}
+            \label{eqa:lsm1}
+            \text{vec}(\mathbf{U}_t)=
+        \mathop{\arg\min}_{ \mathbf{U}_t} \| \mathbf{y} - \mathbf{A}_t\mathbf{V}_t\mathbf{U}_t \|_F^2
+        \end{equation}
+        The process of estimating $\mathbf{U}$ similar to estimating $\mathbf{V}$ is implemented with the corresponding transposed matrix(Alg.\ref{alg:LS} line 6 to line 12).
+        Next, repeat the above process until the number of iteration reaches the set value.
+        Last, multiply the two estimated matrices to get the final result matrix(Alg.\ref{alg:LS} line 14).
 \section{The Implementation and Optimization of Efficient GPU Tensor Sensing}
 \label{SEC_GPU}
 %psuado code
@@ -417,7 +271,7 @@ To achieve high performance on GPUs, we need to consider the data representation
 
 \subsection{Design and Implementation of the GPU Tensor Sensing}
 \subsubsection{Data Struct}
-In Alg. \ref{list:pseudocode}, after least squares minimization (lines 4 and 10 in Alg. \ref{list:pseudocode}), we get vectorized matrices. For a matrix $\mathbf{A} \in \mathbb{R}^{m \times n}$, the corresponding vectorized $\mathbf{A}$ is $\mathbf{A}_v \in \mathbb{R}^{mn \times 1}$. And the vectorized matrices are converted back to the original matrices (lines 5 and 11 in Alg. \ref{list:pseudocode}). In some scientific computing programming languages, such as Matlab, this conversion must be done with the appropriate conversion function.
+In Alg. \ref{list:pseudocode}, after least squares minimization (lines 4 and line 10 in Alg. \ref{list:pseudocode}), we get vectorized matrices. For a matrix $\mathbf{A} \in \mathbb{R}^{m \times n}$, the corresponding vectorized $\mathbf{A}$ is $\mathbf{A}_v \in \mathbb{R}^{mn \times 1}$. And the vectorized matrices are converted back to the original matrices (lines 5 and 11 in Alg. \ref{list:pseudocode}). In some scientific computing programming languages, such as Matlab, this conversion must be done with the appropriate conversion function.
 We adopt the column-first storage format to store matrices and vectors, which not only ensures read and write continuity but also avoids explicit vector-to-matrix conversions since vector $\mathbf{A}_v$ and matrix $\mathbf{A}$ in memory are the same in this format, as shown in Fig. \ref{Fig:vec2mat}.
 
 \begin{figure}[H]
@@ -427,25 +281,7 @@ We adopt the column-first storage format to store matrices and vectors, which no
 \label{Fig:vec2mat}
 \end{figure}
 
-\subsubsection{Least Squares Minimization}
-As shown in Alg. \ref{list:pseudocode}, least squares minimization (LSM) is the major step of the tensor sensing approach, which is the most time-consuming part of the entire approach. There are many approaches to perform least squares minimization. QR factorization is one of the most efficient approaches, which is well supported by CUDA. The least squares problem can be formulated as:
-\begin{equation}
-\widetilde{\mathbf{x}} = \mathop{\arg \min}_{\mathbf{x}} \| \mathbf{b} - \mathbf{A} \mathbf{x} \|^2_F,
-\end{equation}
-where $\mathbf{A}$ is a matrix of size $m \times n$, $\mathbf{x}$ is a vector
-of size $k \times 1$, and $\mathbf{b}$ is a vector of size $n \times 1$. In the tensor
-sensing, the system we work on is an overdetermined system, where $n >
- k$.
- We perform QR factorization on $\mathbf{A}$ and get $\mathbf{A} = \mathbf{Q}\mathbf{R}$ , where $\mathbf{Q}$ is an
- orthogonal matrix of size $n \times k $ and $\mathbf{R}$ is an upper triangular matrix of size $k \times k$. Taking advantage of the special nature of these matrices we obtain $\mathbf{x}$
-as following:
-\begin{equation}
-\mathbf{x} = \mathbf{R}^{-1}\mathbf{Q}^{T} \ast \mathbf{b}.
-\end{equation}
-
-\subsection{Optimizations of the GPU Tensor Sensing}
-\label{SEC_OPT}
-\subsubsection{Optimizing Multiply of Block Diagonal Matrices}
+\subsubsection{Multiply of Block Diagonal Matrices}
 Using the operational properties of the block matrix we get:
 \begin{equation}
         [\mathbf{A}_1, \mathbf{A}_2, \cdots, \mathbf{A}_{N_2}]
@@ -496,33 +332,43 @@ batchNum & number of $gemm$ to perform in the batch & $N_2$ \\
 \end{table}
 
 \subsubsection{Eliminating Explicit Transpose Operations}
-After each least squares method, the transpose of the target matrix is obtained. The transpose operation of the matrix needs to be performed (lines 7 and 12 in Alg. \ref{list:pseudocode}). However, the transpose operation takes a lot of computing time and resource. As the operation after transpose of the matrix is multiplication of diagonal matrices, we eliminate explicit matrix transpose by enabling the transpose option in the gemmStridedBatched() routine. In this way, the gemmStridedBatched() routine will perform matrix transpose implicitly and efficiently before the matrix multiplications. 
+After each least squares method, the transpose of the target matrix is obtained. The transpose operation of the matrix needs to be performed (lines 6 and 12 in Alg. \ref{list:pseudocode}). However, the transpose operation takes a lot of computing time and resource. As the operation after transpose of the matrix is multiplication of diagonal matrices, we eliminate explicit matrix transpose by enabling the transpose option in the gemmStridedBatched() routine. In this way, the gemmStridedBatched() routine will perform matrix transpose implicitly and efficiently before the matrix multiplications. 
 
-\subsection{Data Reusing Strategy}
+\subsubsection{Least Squares Minimization}
+As shown in Alg. \ref{list:pseudocode}, least squares minimization (LSM) is the major step of the tensor sensing approach, which is the most time-consuming part of the entire approach. There are many approaches to perform least squares minimization. QR factorization is one of the most efficient approaches, which is well supported by CUDA.
+
+\subsection{Optimizations of the GPU Tensor Sensing}
+\label{SEC_OPT}
 During the computation flow of the GPU tensor sensing, frequent data transfer between the CPU and GPU will significantly degrade system performance. Therefore we design data reusing  strategy to reduce data transfer overhead and resource consumption.
 
-In the entire tensor sensing flow, we envoke data transer only twice at the beginning and in the end. At the beginning, the input data is transferred from the CPU to the GPU. In the end, the final result matrix is sent back to the CPU. We optimize the computations in the tensor sensing flow such that they all perform in-place calculations. For instance, in the QR decomposition to solve the least squares problem, the input vector $\mathbf{y}$ is overrode by the result vectors (vec($\mathbf{U}$) and  vec($\mathbf{V}$)). Therefore, we need to reassign the vector $\mathbf{y}$ at the beginning of each least squares minimization iteration. However, it is an expensive operation to load the original data of vector $\mathbf{y}$ from the CPU memory every time. Instead, we pre-allocate a memory space named  $dyL$ on the GPU that stores the original data of the vector $\mathbf{y}$. Every time we need to reassign the $dy$, we use the GPU device to device transfer routine cudaMemcpyDeviceToDevice() to copy the data from $dyL$ to $dy$. Since the device to device bandwidth $~380 GB/s$ is much higher than the bandwidth between the CPU and GPU $~12 GB/s$, this strategy significantly reduces data transfer overhead. Alg.\ref{alg:GPU} describes the computation flow of the tensor sensing on the GPU.
+In the entire tensor sensing flow, we envoke data transfer only twice at the beginning and in the end. At the beginning, the input data is transferred from the CPU to the GPU. In the end, the final result matrix is sent back to the CPU. We optimize the computations in the tensor sensing flow such that they all perform in-place calculations. For instance, in the QR decomposition to solve the least squares problem, the input vector $\mathbf{y}$ is overrode by the result vectors (vec($\mathbf{U}$) and  vec($\mathbf{V}$)). Therefore, we need to reassign the vector $\mathbf{y}$ at the beginning of each least squares minimization iteration. However, it is an expensive operation to load the original data of vector $\mathbf{y}$ from the CPU memory every time. Instead, we pre-allocate a memory space named  $dyL$ on the GPU that stores the original data of the vector $\mathbf{y}$. Every time we need to reassign the $dy$, we use the GPU device to device transfer routine cudaMemcpyDeviceToDevice() to copy the data from $dyL$ to $dy$. Since the device to device bandwidth $~380 GB/s$ is much higher than the bandwidth between the CPU and GPU $~12 GB/s$, this strategy significantly reduces data transfer overhead. Alg.\ref{alg:GPU} and Fig.\ref{Fig:dataTS} describes the computation flow and data organization of the tensor sensing on the GPU.
 
 %is that lsm using qr should be mentioned?
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{dataTS.png}
+\caption{Memory organization in the calculation process}
+\label{Fig:dataTS}
+\end{figure}
 
 \begin{algorithm}
 \setstretch{2}
 \caption{Computation Flow of the Tensor Sensing on the GPU}
 \label{alg:GPU}
 \begin{algorithmic}[1]
-    \Require Data on CPU memory: randomly initialized $\mathbf{U}^0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$ and the corresponding transpose matrix $\mathbf{A}_t$
-    \Ensure $\mathbf{X}_s \in \mathbb{R}^{N_1N_3 \times N_2}$
-    \State apply for memory on GPU device: $dy, dA, dAt , dW, dyL$ ($dA(\mathcal{A})$ means that the content in $dA$ is $\mathcal{A}$, the same below)
-    \State data transfer: $\mathcal{A}, \mathcal{A}_t, \mathbf{y}, \mathbf{U}^0 \stackrel{cudaMemcpyHostToDevice}{\longrightarrow} dA(\mathcal{A}), dAt(\mathcal{A}_t), dy(\mathbf{U}^0), dyL(\mathbf{y})$ 
+    \Require Data on CPU memory: randomly initialized $\mathbf{U}^0$, measurement vector $\mathbf{y} \in \mathbf{R}^M$, matrix $\mathbf{A} \in \mathbb{R}^{M \times N_1N_2N_3}$ converted from $M$ sensing tensors $\mathcal{A}_m$
+    \Ensure $\mathbf{X} \in \mathbb{R}^{N_1N_3 \times N_2}$
+    \State apply for memory on GPU device: $dy, dA, dW, dyL$ ($dA(\mathcal{A})$ means that the content in $dA$ is $\mathcal{A}$, the same below)
+    \State data transfer: $\mathcal{A}, \mathbf{y}, \mathbf{U}^0 \stackrel{cudaMemcpyHostToDevice}{\longrightarrow} dA(\mathcal{A}), dy(\mathbf{U}^0), dyL(\mathbf{y})$ 
     \For{$i=0 \to IterNum$}
         \State $dW(\text{uninitialized}), dA(\mathcal{A}), dy(\mathbf{U}^i) \stackrel{cublas<t>gemmStridedBatchd}{\longrightarrow} dW(\mathcal{A}\, \text{diag}(\mathbf{U}^i)), dA(\mathcal{A}), dy(\mathbf{U}^i)$
         \State  $dy(\mathbf{U}^i), dyL(\mathbf{y}) \stackrel{cudaMemcpyDeviceToDevice}{\longrightarrow} dy(\mathbf{y}), dyL(\mathbf{y})$
         \State $dW(\mathcal{A}\, \text{diag}(\mathbf{U}^i)), dy(\mathbf{y}) \stackrel{cusolver<t>qr}{\longrightarrow} dy(\mathbf{V}), dW(\text{uninitialized})$
-        \State $dW(\text{uninitialized}, dAt(\mathcal{A}_t), dy(\mathbf{V}^i))e \stackrel{cublas<t>gemmStridedBatchd}{\longrightarrow} dW(\mathcal{A}_t\, \text{diag}(\mathbf{V}^i)), dAt(\mathcal{A}_t), dy(\mathbf{V}^i)$
+        \State $dW(\text{uninitialized}, dA(\mathcal{A}), dy(\mathbf{V}^i))e \stackrel{cublas<t>gemmStridedBatchd}{\longrightarrow} dW(\mathcal{A}\, \text{diag}(\mathbf{V}^i)), dA(\mathcal{A}), dy(\mathbf{V}^i)$
         \State  $dy(\mathbf{V}^i), dyL(\mathbf{y}) \stackrel{cudaMemcpyDeviceToDevice}{\longrightarrow} dy(\mathbf{y}), dyL(\mathbf{y})$
-        \State $dW(\mathcal{A}_t\, \text{diag}(\mathbf{V}^i)), dy(\mathbf{y}) \stackrel{cusolver<t>qr}{\longrightarrow} dy(\mathbf{U}^i), dW(\text{uninitialized})$
+        \State $dW(\mathcal{A}\, \text{diag}(\mathbf{V}^i)), dy(\mathbf{y}) \stackrel{cusolver<t>qr}{\longrightarrow} dy(\mathbf{U}^i), dW(\text{uninitialized})$
     \EndFor
-    \State \Return $\mathbf{X}^s = \mathbf{U}\mathbf{V}$
+    \State \Return $\mathbf{X} = \mathbf{U}\mathbf{V}$
 \end{algorithmic}
 \end{algorithm}
 
@@ -534,11 +380,16 @@ In this section, we describe the experiment methodology including the hardware a
 We use an NVIDIA Tesla V100 GPU to evaluate the performance of GPU tensor sensing. The GPU incorporates 5120 CUDA cores @ 1.53 GHz and 32 GB DDR5 memory. It is installed on a server with 128 GB DDR memory and an Intel i7-7820x CPU with 8 cores @ 3.60 GHz supporting 16 hardware threads with hyperthreading technology. The server is running Ubuntu 18.04 LTS with the kernel version 4.15.0. The CPU and GPU tensor sensing is running with Matlab R2017b and  CUDA 10.0, repectively.
 
 \subsection{Testing Data}
-In the experiment, we use both synthetic and ground-truth data in the evaluation. The synthetic data is generated according to the compressed sensing model \cite{matsuda2017multi}. For ground-truth data, we use the IKEA 3D data (\ref{Fig:chair}) that generates a ground truth tensor of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1.
-\begin{figure}[H]
+In the experiment, we use both ground-truth and synthetic data in the evaluation. For ground-truth data, we use the IKEA 3D data (\ref{F Artificial data does not correspond to a specific physical model. We use this data to demonstrate the performance of our approach at different data sizes.ig:chair}) that generates a ground truth tensor of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1. Each 3D model is placed in the middle of the “tensor” and occupies a part of the space. In this task, we mainly focus on the location and outline information, while the texture and color information are ignored. The synthetic data is generated according to the compressed sensing model \cite{matsuda2017multi}. The synthetic data does not correspond to a specific physical model. We use it to demonstrate the performance of our approach at different data sizes.
+\begin{figure}[t]
 \centering
-\includegraphics[width=0.4\textwidth]{chair.png}
-\caption{The 3D visualizations of an IKEA chair model.}
+\subfigure[]{
+        \includegraphics[width=0.4\textwidth]{chairOr.png}
+    }
+\subfigure[]{
+        \includegraphics[width=0.4\textwidth]{chairRe.png}
+    }
+\caption{(a) is the 3D visualization of an IKEA models, (b) is the corresponding recovery results.}
 \label{Fig:chair}
 \end{figure}
 
