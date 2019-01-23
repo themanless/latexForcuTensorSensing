@@ -119,7 +119,7 @@ $^{2}$ \quad Shanghai Institute for Advanced Communication and Data Science, Sha
 %\conference{} % An extended version of a conference paper
 
 % Abstract (Do not insert blank lines, i.e. \\) 
-\abstract{Radio-frequency (RF) tomographic imaging is a promising technique for inferring multi-dimensional physical space by processing RF signals traversed across a region of interest. Tensor based approaches for tomographic imaging are superior in detecting the objects within higher dimensional spaces. The recently proposed tensor sensing approach based on the transform tensor model achieves lower error rate and faster speed than previous tensor-based compress sensing approach. However, the running time of the tensor sensing approach increases exponentially with the dimension of tensors, thus not very practical for big tensors. In this paper, we address this problem by exploiting massively parallel GPUs. We design, implement and optimize the tensor sensing approach on an NVIDIA Tesla GPU  and evaluate the performance in terms of the running time and recovery error rate. Experiment results show that our GPU tensor sensing is as accurate as the CPU counterpart with an average of $44.79 \times$ and up to $84.70 \times$ speedups for varying sized synthetic tensor data. For ground-truth 3D model data of smaller size, our GPU algorithm achieves 15.37x speedup over the CPU tensor sensing. We further encapsulate the GPU algorithm into an open-source library, called \textit{cuTensorSensing}, which can be used for efficient RF tomographic imaging.}
+\abstract{Radio-frequency (RF) tomographic imaging is a promising technique for inferring multi-dimensional physical space by processing RF signals traversed across a region of interest. Tensor based approaches for tomographic imaging are superior in detecting the objects within higher dimensional spaces. The recently proposed tensor sensing approach based on the transform tensor model achieves lower error rate and faster speed than previous tensor-based compress sensing approach. However, the running time of the tensor sensing approach increases exponentially with the dimension of tensors, thus not very practical for big tensors. In this paper, we address this problem by exploiting massively parallel GPUs. We design, implement and optimize the tensor sensing approach on an NVIDIA Tesla GPU  and evaluate the performance in terms of the running time and recovery error rate. Experiment results show that our GPU tensor sensing is as accurate as the CPU counterpart with an average of $44.79 \times$ and up to $84.70 \times$ speedups for varying sized synthetic tensor data. For IKEA Model 3D model data of smaller size, our GPU algorithm achieves 15.37x speedup over the CPU tensor sensing. We further encapsulate the GPU algorithm into an open-source library, called \textit{cuTensorSensing}, which can be used for efficient RF tomographic imaging.}
 
 % Keywords
 \keyword{Radio frequency; tomographic imaging; tensor; GPU}
@@ -173,9 +173,9 @@ In general, wireless signal propagating on a link loses power due to shadowing, 
 
 However, the iterative algorithm Alt-Min proposed by Deng et al.\cite{deng2018tensor} iteratively estimates a pair of tensors, which is a computationally-intensive process, thus not very practical for RF tomographic imaging for big objects or regions, or real-time applications. In this paper, we address this problem by exploiting Graphics Processing Units (GPUs). Because of massive hardware parallelism and high memory bandwidth, GPUs have been widely used in diverse applications including machine learning \cite{cui2016geeps} \cite{brito2017detecting} \cite{campos2017scaling}, graph processing \cite{shi2018frog} \cite{zhong2017optimizing} \cite{pan2017multi}, big data analytic \cite{gutierrez2017smote} \cite{rathore2017real}, image processing \cite{devadithya2017gpu}, and fluid dynamics \cite{verma2017advanced}. In order to reap the power of GPUs, the algorithmic steps need to be mapped delicately onto the architecture of GPUs, especially the thread and memory hierarchy.  In this work, we design, implement and optimize the transform model based tensor sensing method of Deng et al. \cite{deng2018tensor} on an NVIDIA Tesla V100 GPU with CUDA (Compute Unified Device Architecture) and evaluate it in terms of the running time and recovery error. Experiment results show that the GPU algorithm achieves similar relative error as the CPU counterpart. Moreover, the GPU tensor sensing outperforms the CPU tensor sensing on all tensor sizes with 45.39x speedup on average and up to 84.70x speedup on bigger tensor size such as $120 \times 120 \times 6$. We encapsulate this GPU tensor sensing algorithm into an open-source library called ``cuTensorSensing" (CUDA Tensor Sensing) which is available at: http://www.findai.net.
 
-Our contributions are summarized as follows. First, we analyze the steps of transform model based tensor sensing using the Alt-Min algorithm and discuss how to map them onto the GPU architecture. Second, we design, implement and optimize the tensor sensing on an NVIDIA Tesla V100 GPU. Third, we evaluate and compare the GPU tensor sensing and the CPU tensor sensing in terms of running time and relative error with both synthetic data and ground-truth data. Fourth, we encapsulate the GPU tensor sensing implementation into an open-source library such that it can be used in diverse applications.
+Our contributions are summarized as follows. First, we analyze the steps of transform model based tensor sensing using the Alt-Min algorithm and discuss how to map them onto the GPU architecture. Second, we design, implement and optimize the tensor sensing on an NVIDIA Tesla V100 GPU. Third, we evaluate and compare the GPU tensor sensing and the CPU tensor sensing in terms of running time and relative error with both synthetic data and IKEA Model data. Fourth, we encapsulate the GPU tensor sensing implementation into an open-source library such that it can be used in diverse applications.
 
-The remainder of the paper is organized as follows. In Section \ref{SEC_RW}, we discuss the related works. Section \ref{SEC_ALGORITHM} presents the notations and briefly summarizes the RF tomographic imaging task as a tensor sensing problem. Section \ref{SEC_GPU} describes the design, implementation and optimizations of the tensor sensing on the GPU. In Section \ref{SEC_EXP}, we describe the experiment methology. Section \ref{SEC_RESULT} evaluates the GPU tensor sensing with both synthetic data and ground-truth data. The conclusions are given in Section \ref{SEC_CON}.
+The remainder of the paper is organized as follows. In Section \ref{SEC_RW}, we discuss the related works. Section \ref{SEC_ALGORITHM} presents the notations and briefly summarizes the RF tomographic imaging task as a tensor sensing problem. Section \ref{SEC_GPU} describes the design, implementation and optimizations of the tensor sensing on the GPU. In Section \ref{SEC_EXP}, we describe the experiment methology. Section \ref{SEC_RESULT} evaluates the GPU tensor sensing with both synthetic data and IKEA Model data. The conclusions are given in Section \ref{SEC_CON}.
 
 \section{Related Works}
 \label{SEC_RW}
@@ -213,7 +213,7 @@ Deng et al. \cite{deng2018tensor} proposed to use the transform-based tensor mod
     \end{algorithmic}
 \end{algorithm}
 \subsection{Implementation of the Tensor Sensing on CPU}
-Alg.\ref{alg:psesudocode} shows the implementation of tensor sensing on CPU. 
+Alg.\ref{list:pseudocode} shows the implementation of tensor sensing on CPU. 
 \begin{algorithm}
 \setstretch{2}
 \caption{Implementation of the Tensor Sensing on CPU}
@@ -237,7 +237,7 @@ Alg.\ref{alg:psesudocode} shows the implementation of tensor sensing on CPU.
     \State \Return $\mathbf{X} = \mathbf{U} \mathbf{V}$
     \end{algorithmic}
     \end{algorithm}
-    First, use $\mathbf{U}$ of previous iteration(for the first iteration, $\mathbf{U}$ is initialized randomly) is used to form a block diagonal matrix $\mathbf{U}_b$(Alg.\ref{alg:LS} line 2):
+    First, $\mathbf{U}$ of previous iteration(for the first iteration, $\mathbf{U}$ is initialized randomly) is used to form a block diagonal matrix $\mathbf{U}_b$(Alg.\ref{list:pseudocode} line 2):
     \begin{equation}
         \label{eqa:diag}
         \mathbf{U}_b = 
@@ -248,22 +248,22 @@ Alg.\ref{alg:psesudocode} shows the implementation of tensor sensing on CPU.
             & & & \mathbf{U}
         \end{bmatrix}
     \end{equation}
-    Next, solve the least square minimization problem to estimate $\mathbf{V}$ of the next iteration(Alg.\ref{alg:LS} line 3 and line 4). The least minimization problem is formulated as following:
+    Next, the least square minimization problem is solved to estimate $\mathbf{V}$ of the next iteration(Alg.\ref{list:pseudocode} line 3 and line 4). The least minimization problem is formulated as following:
         \begin{equation}
             \label{eqa:lsm}
             \text{vec}(\mathbf{V})=
         \mathop{\arg\min}_{ \mathbf{V}} \| \mathbf{y} - \mathbf{A}\mathbf{U}_b\mathbf{V} \|_F^2
         \end{equation}
-        As the estimated $\mathbf{V}$ is in vector form vec($\mathbf{V}$), transform vec($\mathbf{V}$) back to matrix form $\mathbf{V}$(Alg.\ref{alg:LS} line 5).
-        To estimate $\mathbf{U}$, the least square minimization problem in equation.\ref{eqa:lsm} should transpose:
+        As the estimated $\mathbf{V}$ is in vector form vec($\mathbf{V}$), vec($\mathbf{V}$) is transformed back to matrix form $\mathbf{V}$(Alg.\ref{list:pseudocode} line 5).
+        To estimate $\mathbf{U}$, the least square minimization problem in equation.\ref{eqa:lsm} should be transposed:
         \begin{equation}
             \label{eqa:lsm1}
             \text{vec}(\mathbf{U}_t)=
         \mathop{\arg\min}_{ \mathbf{U}_t} \| \mathbf{y} - \mathbf{A}_t\mathbf{V}_t\mathbf{U}_t \|_F^2
         \end{equation}
-        The process of estimating $\mathbf{U}$ similar to estimating $\mathbf{V}$ is implemented with the corresponding transposed matrix(Alg.\ref{alg:LS} line 6 to line 12).
-        Next, repeat the above process until the number of iteration reaches the set value.
-        Last, multiply the two estimated matrices to get the final result matrix(Alg.\ref{alg:LS} line 14).
+        The process of estimating $\mathbf{U}$ similar to estimating $\mathbf{V}$ is implemented with the corresponding transposed matrix(Alg.\ref{list:pseudocode} line 6 to line 12).
+        Next, the above process is repeated until the number of iteration reaches the set value.
+        Last, the two estimated matrices are multiplied to get the final result matrix(Alg.\ref{list:pseudocode} line 14).
 \section{The Implementation and Optimization of Efficient GPU Tensor Sensing}
 \label{SEC_GPU}
 %psuado code
@@ -380,13 +380,15 @@ In this section, we describe the experiment methodology including the hardware a
 We use an NVIDIA Tesla V100 GPU to evaluate the performance of GPU tensor sensing. The GPU incorporates 5120 CUDA cores @ 1.53 GHz and 32 GB DDR5 memory. It is installed on a server with 128 GB DDR memory and an Intel i7-7820x CPU with 8 cores @ 3.60 GHz supporting 16 hardware threads with hyperthreading technology. The server is running Ubuntu 18.04 LTS with the kernel version 4.15.0. The CPU and GPU tensor sensing is running with Matlab R2017b and  CUDA 10.0, repectively.
 
 \subsection{Testing Data}
-In the experiment, we use both ground-truth and synthetic data in the evaluation. For ground-truth data, we use the IKEA 3D data (\ref{F Artificial data does not correspond to a specific physical model. We use this data to demonstrate the performance of our approach at different data sizes.ig:chair}) that generates a ground truth tensor of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1. Each 3D model is placed in the middle of the “tensor” and occupies a part of the space. In this task, we mainly focus on the location and outline information, while the texture and color information are ignored. The synthetic data is generated according to the compressed sensing model \cite{matsuda2017multi}. The synthetic data does not correspond to a specific physical model. We use it to demonstrate the performance of our approach at different data sizes.
+In the experiment, we use both IKEA model and synthetic data in the evaluation. For IKEA model data, we use the IKEA 3D data (\ref{Fig:chairOr}) that generates a ground truth tensor of size $60 \times 60 \times 15$ with rank 6. Each 3D model is placed in the middle of the “tensor” and occupies a part of the space. In this task, we mainly focus on the location and outline information, while the texture and color information are ignored. The synthetic data is generated according to the compressed sensing model \cite{matsuda2017multi}. The synthetic data does not correspond to a specific physical model. We use it to demonstrate the performance of our approach at different data sizes.
 \begin{figure}[t]
 \centering
 \subfigure[]{
+    \label{Fig:chairOr}
         \includegraphics[width=0.4\textwidth]{chairOr.png}
     }
 \subfigure[]{
+    \label{Fig:chairRe}
         \includegraphics[width=0.4\textwidth]{chairRe.png}
     }
 \caption{(a) is the 3D visualization of an IKEA models, (b) is the corresponding recovery results.}
@@ -408,9 +410,15 @@ We adopt two metrics for comparison: running time and relative error rate.
 \subsection{Running Time of Synthetic Data}
 \begin{figure}[t]
     \centering
-    \includegraphics[width=3.5in]{runtime.pdf}
-    \caption{Running time of the CPU tensor sensing and GPU tensor sensing}
+    \subfigure[]{
+    \includegraphics[width=2.0in]{runtime.pdf}
     \label{pic:runtime}
+}
+    \subfigure[]{
+    \includegraphics[width=2.0in]{speedup.pdf}
+    \label{pic:runtime}
+}
+\caption{(a) is the running time of the CPU tensor sensing and GPU tensor sensing, (b) is the speedups of the unoptimized and optimized GPU tensor sensing.}
 \end{figure}
 
 \begin{table}[t]
@@ -436,19 +444,12 @@ We adopt two metrics for comparison: running time and relative error rate.
   \label{tbl_runtime}
 \end{table}
 
-Fig. \ref{pic:runtime} shows that the running time of the CPU tensor sensing and two GPU tensor sensing implementations (unoptimized and optimized ones) for $\mathcal{X}$ of size $n\times n \times 6$ of $\mathcal{L}$-rank 1, where $n$ varies from 40 to 120 at a step of 20. The sampling rate is set to 20\%, and both CPU and GPU tensor sensing iterate 5 iterations for completion. The detailed time value is listed in Table \ref{tbl_runtime}. 
+Fig. \ref{pic:runtime} shows that the running time of the CPU tensor sensing and two GPU tensor sensing implementations (unoptimized and optimized ones) for $\mathcal{X}$ of size $n\times n \times 6$ of rank 1, where $n$ varies from 40 to 120 at a step of 20. The sampling rate is set to 20\%, and both CPU and GPU tensor sensing iterate 5 iterations for completion. The detailed time value is listed in Table \ref{tbl_runtime}. 
 While $M = N_1 \times N_2 \times N_3 \times \text{sampling rate}$ and $\mathcal{A} \in \mathbb{R}^{M \times N_1N_2N_3}$, the scale of the main operation matrix $\mathcal{A}$ increases at a rate of four times as the increase rate of $n$. 
 
 We can see that the running time of the CPU tensor sensing is polynomial with the increase of $n$, while the running time of the GPU tensor sensing is linearly growing. The unoptimzed and optimized GPU tensor sensing achieved an average of $4.24 \times$ and $44.79 \times$ and up to $9.77 \times$ and $84.70 \times$ speedups, respectively. This illustrates the effectiveness of the optimization methods proposed in Sec. \ref{SEC_OPT}. When the tensor size is small, the data transfer occupies a major portion of the entire execution time of the unoptimized GPU tensor sensing. As a result, its performance is even lower than the CPU tensor sensing.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=3.5in]{speedup.pdf}
-    \caption{Speedups of the unoptimized and optimized GPU tensor sensing.}
-    \label{pic:runtime}
-\end{figure}
-
-\subsection{Error Rate and Running Time of Ground-truth Data}
+\subsection{Error Rate and Running Time of IKEA Model Data}
 \begin{figure}[t]
     \centering
     \includegraphics[width=3.5in]{rse.pdf}
@@ -456,11 +457,11 @@ We can see that the running time of the CPU tensor sensing is polynomial with th
     \label{pic:rse}
 \end{figure}
 
-This experiment evaluate the error rate of the CPU and GPU tensor sensing under different iterations for $\mathcal{X}$ of size $40 \times 40 \times 6$ with $\mathcal{L}$-rank 1. The sampling rate is set to 50\%. The running time of the CPU tensor sensing at 5 iterations is 14.91 seconds on average, while the running time of the GPU tensor sensing is 0.97 second on average, thus the speedup is $15.37 \times$. As shown in Fig. \ref{pic:rse}, under increased iterations from 1 to 30, the RSEs drop significantly. More importantly, the CPU tensor sensing and GPU implementation achieve almost the same RSEs at all iterations ( the two curves in Fig. \ref{pic:rse} overlap with each other), which means that they achieve similar error rate performance in tensor sensing.
+This experiment evaluate the error rate of the CPU and GPU tensor sensing under different iterations for $\mathcal{X}$ of size $60 \times 60 \times 15$ with rank 3. The sampling rate is set to 50\%. Fig.\ref{Fig:chairRe} shows the recovery results with 10 iterations. The running time of the CPU tensor sensing at 5 iterations is 14.91 seconds on average, while the running time of the GPU tensor sensing is 0.97 second on average, thus the speedup is $15.37 \times$. As shown in Fig. \ref{pic:rse}, under increased iterations from 1 to 30, the RSEs drop significantly. More importantly, the CPU tensor sensing and GPU implementation achieve almost the same RSEs at all iterations ( the two curves in Fig. \ref{pic:rse} overlap with each other), which means that they achieve similar error rate performance in tensor sensing.
 
 \section{Conclusions}
 \label{SEC_CON}
-In this work, we present an open-source library named \textit{cuTensorSensing} for efficient RF tomographic imaging on GPUs. The experiment evaluations show that the proposed GPU tensor sensing works effectively and accurately. Compared with the counterpart on CPU, the GPU tensor sensing achieves similar error rate but much faster speed. For synthetic data, the GPU tensor sensing achieves an average of $44.79 \times$ and up to $84.70 \times$ speedups versus the CPU tensor sensing for bigger tensors. For ground-truth 3D objects data of smaller tensor size, the GPU tensor sensing achieves a $15.37 \times$ speedup over the CPU tensor sensing. The cuTensorSensing library is useful for efficient RF tomographic imaging.
+In this work, we present an open-source library named \textit{cuTensorSensing} for efficient RF tomographic imaging on GPUs. The experiment evaluations show that the proposed GPU tensor sensing works effectively and accurately. Compared with the counterpart on CPU, the GPU tensor sensing achieves similar error rate but much faster speed. For synthetic data, the GPU tensor sensing achieves an average of $44.79 \times$ and up to $84.70 \times$ speedups versus the CPU tensor sensing for bigger tensors. For IKEA Model 3D objects data of smaller tensor size, the GPU tensor sensing achieves a $15.37 \times$ speedup over the CPU tensor sensing. The cuTensorSensing library is useful for efficient RF tomographic imaging.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\section{Patents}
